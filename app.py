@@ -4,7 +4,35 @@ from api_services import get_hot_topics, generate_script_json
 from video_engine import render_ai_video_pipeline
 
 st.set_page_config(page_title="AI 视觉视频引擎", page_icon="🎬", layout="wide")
-st.title("🎬 爆款视频全自动流水线")
+
+# 🎨 CSS 样式注入 - 提升高级感
+st.markdown("""
+    <style>
+    /* 让侧边栏更有层次感 */
+    [data-testid="stSidebar"] {
+        background-color: #f8f9fa;
+    }
+    /* 美化主标题 */
+    .main-title {
+        font-size: 3rem;
+        font-weight: 800;
+        color: #FF0050; /* 抖音红 */
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    </style>
+    <h1 class="main-title">🎬 AI Video Engine</h1>
+""", unsafe_allow_html=True)
+
+# 💡 快速上手指南（折叠式）
+with st.expander("💡 快速上手指南 (点此展开)"):
+    st.markdown("""
+    1. **选热点**：从左侧获取最新的抖音趋势。
+    2. **AI 编剧**：点击生成脚本，你可以手动微调文案。
+    3. **一键出片**：渲染过程约需 2-3 分钟，请耐心等待。
+    ---
+    *注：建议分镜数量控制在 4-6 个，以获得最佳画质。*
+    """)
 
 if 'hot_topics' not in st.session_state: st.session_state.hot_topics = []
 if 'scenes_data' not in st.session_state: st.session_state.scenes_data = []
@@ -30,13 +58,13 @@ col1, col2 = st.columns([1, 1.2])
 
 with col1:
     st.subheader("📡 热点挖掘机")
-    if st.button("刷新抖音热点 🔄"):
+    if st.button("刷新抖音热点 🔄", help="实时获取抖音最新热搜榜单"):
         with st.spinner("扫描中..."):
             st.session_state.hot_topics = get_hot_topics(tianapi_key)
             
     if st.session_state.hot_topics:
-        selected_topic = st.selectbox("📌 选择目标：", st.session_state.hot_topics)
-        if st.button("🤖 呼叫 AI 导演写剧本"):
+        selected_topic = st.selectbox("📌 选择目标：", st.session_state.hot_topics, help="从热搜榜单中选择一个话题")
+        if st.button("🤖 呼叫 AI 导演写剧本", help="由 DeepSeek-V3 驱动，自动构思分镜与视觉指令"):
             if not llm_api_key: st.error("请配置 DeepSeek Key")
             else:
                 with st.spinner("AI 导演构思中..."):
@@ -51,22 +79,31 @@ with col2:
                 "narration": st.column_config.TextColumn("🎙️ 口播文案", width="medium"),
                 "image_prompt": st.column_config.TextColumn("🎨 画面提示词", width="large"),
             },
-            hide_index=True, num_rows="dynamic"
+            hide_index=True, 
+            num_rows="dynamic",
+            help="你可以双击单元格修改文案，或调整视觉提示词以改变画风"
         )
         
         st.markdown("---")
-        if st.button("🚀 确认剧本，生成大片！", use_container_width=True):
+        if st.button("🚀 确认剧本，生成大片！", use_container_width=True, help="渲染过程约需 2-3 分钟"):
             if not zhipu_api_key: st.error("请配置智谱 Key！")
             else:
-                with st.spinner("流水线全面启动，预计2-3分钟..."):
+                # 使用 st.status 展示实时进度
+                with st.status("🚀 视频引擎全力运转中...", expanded=True) as status:
+                    st.write("🎨 智谱 AI 正在绘制高清分镜...")
+                    st.write("🎙️ 微软神经网络正在合成配音...")
+                    st.write("🎬 MoviePy 正在进行像素压制...")
+                    
                     video_file = "ai_b_roll_output.mp4"
                     success = render_ai_video_pipeline(edited_scenes, zhipu_api_key, video_file, pexels_api_key)
                     
                     if success:
+                        status.update(label="🎉 视频生成成功！", state="complete", expanded=False)
                         st.balloons()
-                        st.success("🎉 大片生成完毕！")
                         # 核心修复：正确读取本地文件
                         with open(video_file, "rb") as file:
                             video_bytes = file.read()
                             st.video(video_bytes)
-                            st.download_button("⬇️ 下载成片", data=video_bytes, file_name=f"{selected_topic}.mp4", mime="video/mp4")
+                            st.download_button("⬇️ 下载成片", data=video_bytes, file_name=f"{selected_topic}.mp4", mime="video/mp4", help="下载生成的视频文件")
+                    else:
+                        status.update(label="❌ 生成失败", state="error")
