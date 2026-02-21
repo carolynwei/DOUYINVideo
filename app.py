@@ -73,6 +73,7 @@ with col1:
 with col2:
     st.subheader("✍️ 编导微调台")
     if st.session_state.scenes_data:
+        st.caption("💡 提示：你可以双击单元格修改文案，或调整提示词以改变画风")
         edited_scenes = st.data_editor(
             st.session_state.scenes_data,
             column_config={
@@ -80,8 +81,7 @@ with col2:
                 "image_prompt": st.column_config.TextColumn("🎨 画面提示词", width="large"),
             },
             hide_index=True, 
-            num_rows="dynamic",
-            help="你可以双击单元格修改文案，或调整视觉提示词以改变画风"
+            num_rows="dynamic"
         )
         
         st.markdown("---")
