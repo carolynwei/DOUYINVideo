@@ -8,11 +8,17 @@ from moviepy.editor import AudioFileClip, ImageClip, TextClip, ColorClip, Compos
 # 🔑 环境自适应配置：自动识别 Linux 云端或 Windows 本地
 if platform.system() == "Linux":
     os.environ["IMAGEMAGICK_BINARY"] = "/usr/bin/convert"  # 云端路径
-    TARGET_FONT = "Noto-Sans-CJK-SC"  # Linux 中文字体
 else:
     # 这里的路径需与你本地安装路径一致
     os.environ["IMAGEMAGICK_BINARY"] = r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick.exe"
-    TARGET_FONT = "SimHei"  # Windows 黑体
+
+# 🔑 字体路径配置：优先使用仓库字体文件，降级到系统字体
+if os.path.exists("font.ttf"):
+    FONT_PATH = "font.ttf"  # 直接使用字体文件
+elif platform.system() == "Linux":
+    FONT_PATH = "Noto-Sans-CJK-SC"  # Linux 系统字体
+else:
+    FONT_PATH = "SimHei"  # Windows 黑体
 
 async def text_to_mp3(text, filename):
     """【云端优化版】直接联网生成配音，增加重试逻辑"""
@@ -69,7 +75,7 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
             bg = ColorClip(size=(1080, 1920), color=(0, 0, 0)).set_duration(dur)
 
         # 字幕逻辑
-        txt = TextClip(scene['narration'], fontsize=70, color='white', font=TARGET_FONT,
+        txt = TextClip(scene['narration'], fontsize=70, color='white', font=FONT_PATH,
                        method='caption', size=(900, None), stroke_color='black', stroke_width=2)
         txt = txt.set_duration(dur).set_position(('center', 0.8), relative=True)
         
