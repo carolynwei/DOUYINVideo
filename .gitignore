@@ -1,0 +1,34 @@
+# 环境配置文件（包含密钥，绝不上传）
+.streamlit/secrets.toml
+.env
+
+# 临时文件
+temp_*.mp3
+temp_*.jpg
+temp_*.mp4
+*.mp4
+test_output.*
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 虚拟环境
+venv/
+env/
+ENV/
+douyin-video-env/
+
+# IDE 配置
+.vscode/
+.idea/
+.qoder/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 测试文件
+test_pipeline.py
