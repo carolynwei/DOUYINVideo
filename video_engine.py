@@ -2,15 +2,10 @@ import os
 import platform
 import asyncio
 import edge_tts
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 import streamlit as st
-from moviepy.editor import AudioFileClip, ImageClip, TextClip, ColorClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip
-
-# 🔑 环境自适应配置：自动识别 Linux 云端或 Windows 本地
-if platform.system() == "Linux":
-    os.environ["IMAGEMAGICK_BINARY"] = "/usr/bin/convert"  # 云端路径
-else:
-    # 这里的路径需与你本地安装路径一致
-    os.environ["IMAGEMAGICK_BINARY"] = r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick.exe"
+from moviepy.editor import AudioFileClip, ImageClip, ColorClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip
 
 # 🔑 字体路径配置：多级降级策略确保100%可用
 def get_font_path():
@@ -24,20 +19,18 @@ def get_font_path():
     if os.path.exists("font.ttf"):
         return os.path.abspath("font.ttf")
     
-    # 3. 最终降级：系统字体（Linux 必须先安装 fonts-noto-cjk）
+    # 3. 最终降级：寻找系统字体文件
     if platform.system() == "Linux":
-        # Linux 系统字体路径
         linux_fonts = [
             "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
             "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-            "Noto-Sans-CJK-SC"  # 字体名称（需要 fonts-noto-cjk）
         ]
         for font in linux_fonts:
-            if font.startswith("/") and os.path.exists(font):
+            if os.path.exists(font):
                 return font
-        return "Noto-Sans-CJK-SC"  # 最后尝试字体名
-    else:
-        return "SimHei"  # Windows 黑体
+    
+    # 如果都找不到，返回 None（后续会有错误提示）
+    return None
 
 FONT_PATH = get_font_path()
 
@@ -45,9 +38,70 @@ FONT_PATH = get_font_path()
 try:
     if st and hasattr(st, 'sidebar'):
         with st.sidebar:
-            st.info(f"🔤 字体路径: {FONT_PATH}")
+            if FONT_PATH:
+                st.success(f"✅ 字体加载成功: {os.path.basename(FONT_PATH)}")
+            else:
+                st.error("❌ 未找到字体文件！请上传 font.ttf")
 except:
     pass  # 非 Streamlit 环境下忽略
+
+def create_subtitle_image(text, width=1080, height=400, fontsize=70):
+    """🎨 用 Pillow 手工绘制字幕图片（彻底绕过 ImageMagick）"""
+    if not FONT_PATH:
+        raise FileNotFoundError("未找到字体文件！请确保 font.ttf 存在于仓库根目录")
+    
+    # 创建透明背景图片
+    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    
+    # 加载字体
+    try:
+        font = ImageFont.truetype(FONT_PATH, fontsize)
+    except Exception as e:
+        st.error(f"字体加载失败: {e}")
+        raise
+    
+    # 文本自动换行
+    lines = []
+    words = text
+    max_width = width - 100  # 左右边距50px
+    
+    # 简单换行逻辑：按字符宽度切分
+    current_line = ""
+    for char in words:
+        test_line = current_line + char
+        bbox = draw.textbbox((0, 0), test_line, font=font)
+        if bbox[2] - bbox[0] > max_width and current_line:
+            lines.append(current_line)
+            current_line = char
+        else:
+            current_line = test_line
+    if current_line:
+        lines.append(current_line)
+    
+    # 计算总高度并居中
+    line_height = fontsize + 20
+    total_height = len(lines) * line_height
+    start_y = (height - total_height) // 2
+    
+    # 绘制每行文字（先画黑边，再画白字）
+    for i, line in enumerate(lines):
+        bbox = draw.textbbox((0, 0), line, font=font)
+        text_width = bbox[2] - bbox[0]
+        x = (width - text_width) // 2
+        y = start_y + i * line_height
+        
+        # 黑色描边（stroke效果）
+        for offset_x in [-2, 0, 2]:
+            for offset_y in [-2, 0, 2]:
+                if offset_x != 0 or offset_y != 0:
+                    draw.text((x + offset_x, y + offset_y), line, font=font, fill=(0, 0, 0, 255))
+        
+        # 白色主文字
+        draw.text((x, y), line, font=font, fill=(255, 255, 255, 255))
+    
+    # 转为 numpy 数组供 MoviePy 使用
+    return np.array(img)
 
 async def text_to_mp3(text, filename):
     """【云端优化版】直接联网生成配音，增加重试逻辑"""
@@ -103,10 +157,9 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
             # 🔑 修复：使用 ColorClip 创建纯黑背景
             bg = ColorClip(size=(1080, 1920), color=(0, 0, 0)).set_duration(dur)
 
-        # 字幕逻辑
-        txt = TextClip(scene['narration'], fontsize=70, color='white', font=FONT_PATH,
-                       method='caption', size=(900, None), stroke_color='black', stroke_width=2)
-        txt = txt.set_duration(dur).set_position(('center', 0.8), relative=True)
+        # 🎨 字幕逻辑：用 Pillow 手工绘制（彻底绕过 ImageMagick）
+        subtitle_img = create_subtitle_image(scene['narration'], width=1080, height=400, fontsize=70)
+        txt = ImageClip(subtitle_img).set_duration(dur).set_position(('center', 0.75), relative=True)
         
         scene_clips.append(CompositeVideoClip([bg, txt]).set_audio(audio_clip))
 
