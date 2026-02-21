@@ -12,13 +12,42 @@ else:
     # 这里的路径需与你本地安装路径一致
     os.environ["IMAGEMAGICK_BINARY"] = r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick.exe"
 
-# 🔑 字体路径配置：优先使用仓库字体文件，降级到系统字体
-if os.path.exists("font.ttf"):
-    FONT_PATH = "font.ttf"  # 直接使用字体文件
-elif platform.system() == "Linux":
-    FONT_PATH = "Noto-Sans-CJK-SC"  # Linux 系统字体
-else:
-    FONT_PATH = "SimHei"  # Windows 黑体
+# 🔑 字体路径配置：多级降级策略确保100%可用
+def get_font_path():
+    """智能检测可用的中文字体路径"""
+    # 1. 优先：仓库中的字体文件（绝对路径）
+    repo_font = os.path.join(os.path.dirname(__file__), "font.ttf")
+    if os.path.exists(repo_font):
+        return repo_font
+    
+    # 2. 降级：当前工作目录的字体文件
+    if os.path.exists("font.ttf"):
+        return os.path.abspath("font.ttf")
+    
+    # 3. 最终降级：系统字体（Linux 必须先安装 fonts-noto-cjk）
+    if platform.system() == "Linux":
+        # Linux 系统字体路径
+        linux_fonts = [
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+            "Noto-Sans-CJK-SC"  # 字体名称（需要 fonts-noto-cjk）
+        ]
+        for font in linux_fonts:
+            if font.startswith("/") and os.path.exists(font):
+                return font
+        return "Noto-Sans-CJK-SC"  # 最后尝试字体名
+    else:
+        return "SimHei"  # Windows 黑体
+
+FONT_PATH = get_font_path()
+
+# 🔍 调试信息：在 Streamlit 侧边栏显示字体路径
+try:
+    if st and hasattr(st, 'sidebar'):
+        with st.sidebar:
+            st.info(f"🔤 字体路径: {FONT_PATH}")
+except:
+    pass  # 非 Streamlit 环境下忽略
 
 async def text_to_mp3(text, filename):
     """【云端优化版】直接联网生成配音，增加重试逻辑"""
