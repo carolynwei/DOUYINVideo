@@ -10,21 +10,21 @@ if 'hot_topics' not in st.session_state: st.session_state.hot_topics = []
 if 'scenes_data' not in st.session_state: st.session_state.scenes_data = []
 
 with st.sidebar:
-    st.header("⚙️ 核心引擎配置")
+    st.header("⚙️ 引擎运行状态")
     
-    # 尝试从 secrets.toml 读取，如果没有则默认为空字符串
-    default_tianapi = st.secrets.get("TIANAPI_KEY", "")
-    default_deepseek = st.secrets.get("DEEPSEEK_KEY", "")
-    default_zhipu = st.secrets.get("ZHIPU_KEY", "")
-    default_pexels = st.secrets.get("PEXELS_KEY", "")
-    
-    tianapi_key = st.text_input("1. 天行数据 API Key", value=default_tianapi, type="password")
-    llm_api_key = st.text_input("2. DeepSeek API Key", value=default_deepseek, type="password")
-    zhipu_api_key = st.text_input("3. 智谱 CogView API Key", value=default_zhipu, type="password")
-    pexels_api_key = st.text_input("4. Pexels API Key (画图兜底)", value=default_pexels, type="password")
-    
-    imagemagick_path = st.text_input("ImageMagick 路径", value=r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick.exe")
-    if imagemagick_path: os.environ["IMAGEMAGICK_BINARY"] = imagemagick_path
+    # 🔑 自动从 secrets 读取，不再使用 st.text_input
+    try:
+        tianapi_key = st.secrets["TIANAPI_KEY"]
+        llm_api_key = st.secrets["DEEPSEEK_KEY"]
+        zhipu_api_key = st.secrets["ZHIPU_KEY"]
+        pexels_api_key = st.secrets.get("PEXELS_KEY", "")
+        
+        st.success("✅ 密钥加载成功（已安全隐藏）")
+    except Exception as e:
+        st.error("❌ 密钥缺失：请在 Streamlit Cloud 后台配置 Secrets")
+        st.stop()  # 如果没有密钥，停止后续运行
+
+    st.info("💡 你的个人 API 密钥已通过 Streamlit Cloud 加密保护。")
 
 col1, col2 = st.columns([1, 1.2])
 

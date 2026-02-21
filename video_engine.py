@@ -3,7 +3,7 @@ import platform
 import asyncio
 import edge_tts
 import streamlit as st
-from moviepy.editor import AudioFileClip, ImageClip, TextClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip
+from moviepy.editor import AudioFileClip, ImageClip, TextClip, ColorClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip
 
 # 🔑 环境自适应配置：自动识别 Linux 云端或 Windows 本地
 if platform.system() == "Linux":
@@ -63,7 +63,8 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
             bg = ImageClip(image_paths[i]).set_duration(dur).resize(height=1920).crop(x_center=1080/2, width=1080)
             temp_files.append(image_paths[i])
         else:
-            bg = ImageClip("black", duration=dur).resize((1080, 1920))
+            # 🔑 修复：使用 ColorClip 创建纯黑背景
+            bg = ColorClip(size=(1080, 1920), color=(0, 0, 0)).set_duration(dur)
 
         # 字幕逻辑
         txt = TextClip(scene['narration'], fontsize=70, color='white', font='SimHei',
