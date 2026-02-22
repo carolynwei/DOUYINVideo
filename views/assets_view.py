@@ -41,8 +41,6 @@ def render_assets_view():
         border-radius: 16px;
         padding: 25px 20px;
         margin-bottom: 25px;
-        position: relative;
-        overflow: hidden;
     ">
         <!-- 顶部标签 -->
         <div style="
@@ -56,8 +54,7 @@ def render_assets_view():
                 height: 10px;
                 background: #FF3131;
                 border-radius: 50%;
-                box-shadow: 0 0 10px rgba(255,49,49,0.8);
-                animation: pulse-dot 1.5s ease-in-out infinite;
+                box-shadow: 0 0 10px rgba(255,49,49,0.8), 0 0 20px rgba(255,49,49,0.4);
             "></div>
             <span style="
                 font-size: 11px;
@@ -116,25 +113,7 @@ def render_assets_view():
                 <div style="font-size: 11px; color: #8b949e;">热门作品</div>
             </div>
         </div>
-        
-        <!-- 装饰线 -->
-        <div style="
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, #FF3131, transparent);
-            opacity: 0.5;
-        "></div>
     </div>
-    
-    <style>
-    @keyframes pulse-dot {
-        0%, 100% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 10px rgba(255,49,49,0.8); }
-        50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 20px rgba(255,49,49,1); }
-    }
-    </style>
     """.format(
         len(st.session_state.get('script_versions', [])),
         "0",  # TODO: 从数据库获取
