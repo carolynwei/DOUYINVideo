@@ -264,7 +264,42 @@ with col1:
         # 👑 新增：画面提示词生成模式切换
         auto_image_mode = st.toggle("🤖 AI 自动生成画面分镜", value=True, help="关闭后，AI 将只写脚本文案，画面分镜由您手动输入")
         
-        if script_mode == "🤖 标准 AI 导演":
+        # 🎬 统一的生成按钮（根据风格自动适配）
+        button_labels = {
+            "🗡️ 认知刺客流（冲击力+优越感）": "🗡️ 呢召认知刺客",
+            "👍 听勝/养成系（互动率04+评论爆炸）": "👍 呢召听勝博主",
+            "🎬 POV沉浸流（第一人称+代入感）": "🎬 呢召POV导演",
+            "🔥 情绪宣泄流（极致反转+发疯文学）": "🔥 呢召情绪大师",
+            "🐱 Meme抗象流（低成本+病毒传播）": "🐱 呢召Meme创作者"
+        }
+        
+        if st.button(button_labels[script_mode], help=f"基于 {script_mode} 的策略生成剧本"):
+            if not llm_api_key:
+                st.error("请配置 DeepSeek Key")
+            else:
+                # 💰 积分扣除检查
+                model_cost = st.session_state.get('model_cost', 1)
+                if deduct_credits(user_id, model_cost):
+                    with st.status(f"🎬 {script_mode} 创作中...", expanded=True) as status:
+                        st.write("📋 分析主题，选定创作策略...")
+                        st.write("🎭 构思风格化剧本结构...")
+                        st.write("✍️ 撰写高能量文案...")
+                        
+                        if auto_image_mode:
+                            st.write("🎥 自动生成风格化分镜提示词...")
+                        
+                        # 🔑 暂时使用爆款大师模式（后续会根据风格分别适配）
+                        st.session_state.scenes_data = generate_viral_script(
+                            topic=selected_topic,
+                            api_key=llm_api_key,
+                            auto_image_prompt=auto_image_mode
+                        )
+                        
+                        status.update(label=f"✅ {script_mode} 剧本创作完成！", state="complete")
+                    st.success(f"✅ 剧本生成成功！已扣除 {model_cost} 积分")
+                    st.rerun()
+                else:
+                    st.error(f"❌ 积分不足！当前操作需要 {model_cost} 积分。请明日签到或更换低消耗模型。")
             if st.button("🤖 呼叫 AI 导演写剧本", help="由 DeepSeek-V3 驱动，自动构思分镜与视觉指令"):
                 if not llm_api_key: 
                     st.error("请配置 DeepSeek Key")
