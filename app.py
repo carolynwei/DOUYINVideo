@@ -116,15 +116,103 @@ VOICE_MAPPING = {
 # ==================== 侧边栏 ====================
 
 def render_sidebar(api_keys):
-    """渲染侧边栏"""
+    """渲染侧边栏 - 品牌监控座舱"""
     with st.sidebar:
-        # Logo + Slogan
+        # ===== 品牌监控区：双口号 + 动态效果 =====
         st.markdown("""
-        <div style="text-align: center; padding: 20px 0;">
-            <div style="font-size: 64px; margin-bottom: 10px;">🚖</div>
-            <div style="font-size: 22px; font-weight: 800; color: #FF3131; margin-bottom: 8px;">VideoTaxi</div>
-            <div style="font-size: 13px; color: #8b949e; font-weight: 500; letter-spacing: 1px;">在抖音公路上自由驰骋</div>
+        <div style="
+            background: linear-gradient(135deg, rgba(255,49,49,0.08) 0%, rgba(13,17,23,0.95) 100%);
+            border: 1px solid rgba(255,49,49,0.25);
+            border-radius: 12px;
+            padding: 20px 15px;
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        ">
+            <!-- 装饰性光效 -->
+            <div style="
+                position: absolute;
+                top: -50%;
+                left: -20%;
+                width: 50%;
+                height: 200%;
+                background: linear-gradient(90deg, transparent, rgba(255,49,49,0.1), transparent);
+                transform: rotate(25deg);
+                pointer-events: none;
+                animation: shimmer 3s ease-in-out infinite;
+            "></div>
+            
+            <!-- Logo -->
+            <div style="font-size: 48px; margin-bottom: 8px; position: relative; z-index: 1;">🚖</div>
+            
+            <!-- 品牌名 - 霓虹效果 -->
+            <div style="
+                font-size: 26px;
+                font-weight: 900;
+                color: #FF3131;
+                text-shadow: 0 0 20px rgba(255,49,49,0.6), 0 0 40px rgba(255,49,49,0.3);
+                letter-spacing: -1px;
+                margin-bottom: 4px;
+                position: relative;
+                z-index: 1;
+            ">VIDEOTAXI</div>
+            
+            <!-- 品牌愿景 - 在抖音公路上自由驰骋 -->
+            <div style="
+                font-size: 11px;
+                color: #8b949e;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                margin-bottom: 15px;
+                position: relative;
+                z-index: 1;
+            ">在抖音公路上自由驰骋</div>
+            
+            <!-- 商业承诺 - 7x24跑单状态 -->
+            <div style="
+                background: linear-gradient(90deg, #FF3131 0%, #8b0000 100%);
+                padding: 8px 12px;
+                border-radius: 6px;
+                box-shadow: 0 4px 15px rgba(255,49,49,0.4);
+                position: relative;
+                z-index: 1;
+            ">
+                <div style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                ">
+                    <!-- 脉冲点 -->
+                    <div style="
+                        width: 8px;
+                        height: 8px;
+                        background: #fff;
+                        border-radius: 50%;
+                        box-shadow: 0 0 10px rgba(255,255,255,0.8);
+                        animation: pulse-dot 1.5s ease-in-out infinite;
+                    "></div>
+                    <span style="
+                        font-size: 13px;
+                        font-weight: 700;
+                        color: #fff;
+                        letter-spacing: 0.5px;
+                    ">7×24H 流量跑单中</span>
+                </div>
+            </div>
         </div>
+        
+        <style>
+        @keyframes shimmer {
+            0%, 100% { transform: rotate(25deg) translateX(-100%); }
+            50% { transform: rotate(25deg) translateX(200%); }
+        }
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(0.95); opacity: 0.7; }
+            50% { transform: scale(1.2); opacity: 1; }
+        }
+        </style>
         """, unsafe_allow_html=True)
         
         st.divider()
