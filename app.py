@@ -119,10 +119,10 @@ def render_sidebar(api_keys):
     """渲染侧边栏"""
     with st.sidebar:
         # Logo
+        # 🚖 出租车图标
         st.markdown("""
-        <div style="text-align: center; padding: 10px 0;">
-            <h2 style="margin: 0; color: #FF3131;">🚖 VideoTaxi</h2>
-            <p style="margin: 0; font-size: 12px; color: #8b949e;">让流量为你 7x24 小时跑单</p>
+        <div style="text-align: center; padding: 20px 0;">
+            <span style="font-size: 64px;">🚖</span>
         </div>
         """, unsafe_allow_html=True)
         
