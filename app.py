@@ -335,9 +335,11 @@ with col1:
                         if auto_image_mode:
                             st.write("🎥 自动生成风格化分镜提示词...")
                         
-                        # 🔑 暂时使用爆款大师模式（后续会根据风格分别适配）
-                        st.session_state.scenes_data = generate_viral_script(
+                        # 🔑 使用新的智能路由器（包含强制自检）
+                        from api_services import generate_script_by_style
+                        st.session_state.scenes_data = generate_script_by_style(
                             topic=selected_topic,
+                            style=script_mode,
                             api_key=llm_api_key,
                             auto_image_prompt=auto_image_mode
                         )
