@@ -186,27 +186,43 @@ def build_master_image_prompt(visual_anchor: str, scene_description: str, style_
     """
     🎬 导演级 Prompt 构建器 - 确保电影级画面质感
     
+    重要：scene_description 应该只包含场景和动作，不包含主角外貌描述
+    visual_anchor 包含主角特征，两者组合成完整画面
+    
     Args:
-        visual_anchor: 视觉锚点（主角特征包）
-        scene_description: 场景描述
+        visual_anchor: 视觉锚点（主角特征包，只写一次）
+        scene_description: 场景描述（只写场景+动作，不写主角外貌）
         style_config: 风格配置
         shot_type: 镜头类型
     
     Returns:
         完整的英文生图 Prompt
     """
-    # 1. 视觉锚点（强制一致性）
-    anchor = visual_anchor if visual_anchor else "A consistent character"
+    # 清理输入
+    anchor = (visual_anchor or "A consistent character").strip()
+    scene = (scene_description or "").strip()
+    
+    # 如果 scene_description 已经包含了 visual_anchor 的内容，去重
+    if anchor.lower() in scene.lower():
+        # scene 已经包含了 anchor，直接使用 scene
+        main_content = scene
+    else:
+        # 正常组合：anchor + scene
+        main_content = f"{anchor}, {scene}" if scene else anchor
     
     # 2. 镜头语言
     shot = CINEMATIC_TEMPLATES["镜头语言"].get(shot_type, CINEMATIC_TEMPLATES["镜头语言"]["close_up"])
     
-    # 3. 光影效果
-    lighting = CINEMATIC_TEMPLATES["光影效果"].get("cinematic")
-    if "cyberpunk" in style_config.get("visual_base", "").lower():
+    # 3. 光影效果（根据风格选择）
+    visual_base = style_config.get("visual_base", "").lower()
+    if "cyberpunk" in visual_base or "neon" in visual_base:
         lighting = CINEMATIC_TEMPLATES["光影效果"]["neon"]
-    elif "natural" in style_config.get("visual_base", "").lower():
+    elif "natural" in visual_base or "vlog" in visual_base:
         lighting = CINEMATIC_TEMPLATES["光影效果"]["natural"]
+    elif "moody" in visual_base:
+        lighting = CINEMATIC_TEMPLATES["光影效果"]["moody"]
+    else:
+        lighting = CINEMATIC_TEMPLATES["光影效果"]["cinematic"]
     
     # 4. 风格滤镜
     style_filter = style_config.get("shot_keywords", CINEMATIC_TEMPLATES["风格滤镜"]["sam_kolder"])
@@ -214,18 +230,25 @@ def build_master_image_prompt(visual_anchor: str, scene_description: str, style_
     # 5. 质感增强
     texture = CINEMATIC_TEMPLATES["质感增强"]["sharp"]
     
-    # 组合完整 Prompt
+    # 组合完整 Prompt（避免重复）
     prompt_parts = [
-        anchor,  # 视觉锚点确保一致性
-        scene_description,  # 具体场景
+        main_content,  # 主角 + 场景动作
         shot,  # 镜头语言
         lighting,  # 光影效果
         style_filter,  # 风格滤镜
         texture,  # 质感增强
-        "8k resolution, highly detailed, professional photography, cinematic composition"  # 基础质量
+        "8k resolution, highly detailed, professional photography, cinematic composition"
     ]
     
-    return ", ".join(filter(None, prompt_parts))
+    # 过滤空值并去重
+    seen = set()
+    filtered_parts = []
+    for part in prompt_parts:
+        if part and part.lower() not in seen:
+            seen.add(part.lower())
+            filtered_parts.append(part)
+    
+    return ", ".join(filtered_parts)
 
 
 def generate_visual_anchor(topic: str, style: str, client) -> dict:
@@ -455,28 +478,48 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
 5. **视觉检查**：确认每个 image_prompt 是否包含了镜头角度、光影和视觉参考，必须符合【视觉约束】
 6. **情绪检查**：确认narration中是否包含了至少1个<prosody>标签，Hook句必须有情绪标注
 
+【📝 剧本内容核心要求】：
+1. **口播文案必须紧扣主题**：每一句都要围绕"{topic}"展开，禁止偏离主题的泛泛而谈
+2. **emotion_vibe 必须匹配内容情绪**：文案是什么情绪，就标注什么标签，不能为了凑曲线而硬贴标签
+3. **画面提示词必须呼应文案**：看到画面就能想到文案，看到文案就能想象画面
+4. **sfx_label 必须服务情绪**：音效是为了强化当前情绪，不是为了填满字段
+
+【🎬 Visual Anchor 使用规范】：
+- visual_anchor 只定义一次，包含主角的核心特征（外貌+服装+气质）
+- 每个分镜的 image_prompt **只写场景和动作**，不要重复写主角外貌
+- 示例：
+  - visual_anchor: "A 30-year-old Asian woman with short black hair, wearing a red blazer, confident expression"
+  - 分镜1 image_prompt: "sitting at desk, typing on laptop, office background"
+  - 分镜2 image_prompt: "standing by window, looking at city skyline, sunset lighting"
+  - ❌ 错误：每个分镜都重复"A 30-year-old Asian woman with short black hair..."
+
+【⏱️ 时间轴规范】：
+- 每个分镜 **2-4秒**，快节奏短平快
+- 总时长控制在 **15-25秒**（抖音黄金时长）
+- 时间必须连续：0-3, 3-6, 6-9, 9-12, 12-15...
+
 【输出要求】：
 必须严格输出JSON对象，包含 visual_anchor 和 segments 数组。格式：
 {{
-  "visual_anchor": "根据主题自动定义的视觉锚点描述（中文，用于确保画面一致性）",
+  "visual_anchor": "主角特征描述（英文，只写一次）",
   "segments": [
     {{
-      "start_time": 0,  // 该分镜开始时间(秒)
-      "end_time": 3,    // 该分镜结束时间(秒)
-      "narration": "口播文案（经过自检的刺客文案）", 
-      "emotion_vibe": "cold_question",  // 严格遵循情绪曲线: cold_question/angry_shout/deep_mystery/excited_announce/fierce_warning/sad_sigh/sarcastic_mock/neutral_narrate
-      "image_prompt": "visual_anchor + 具体场景描述（英文，包含镜头、光影、风格）",
-      "sfx_label": "[Impact]"  // SFX导演位: [Transition]/[Impact]/[Suspense]/[Glitch]/[Silence]
+      "start_time": 0,
+      "end_time": 3,
+      "narration": "紧扣主题的口播文案（带SSML标签）", 
+      "emotion_vibe": "根据文案实际情绪选择",
+      "image_prompt": "场景+动作描述（英文，不包含主角外貌）",
+      "sfx_label": "服务当前情绪的音效"
     }}
   ]
 }}
 
-⚡ **关键：导演时间轴逻辑**：
-- visual_anchor 必须在 segments 之前定义，所有 image_prompt 必须以此开头
-- start_time/end_time 必须连续且紧凑（如 0-3, 3-7, 7-11...）
-- 总时长应控制在30-60秒内
-- emotion_vibe 必须遵循 [Hook(冷) -> Content(深) -> Gold(爆)] 曲线
-- sfx_label 应与分镜氛围匹配：Hook用[Suspense]，转场用[Transition]，高潮用[Impact]，反转用[Glitch]
+⚡ **关键检查点**：
+- [ ] visual_anchor 是否精确定义了主角特征？
+- [ ] image_prompt 是否**没有重复**主角外貌描述？
+- [ ] 每个分镜的 narration 是否都紧扣"{topic}"？
+- [ ] emotion_vibe 是否与文案情绪真正匹配？
+- [ ] 时间轴是否紧凑（2-4秒/分镜）？
 
 绝对不要输出Markdown标记（如 ```json）或其他解释性文字。"""
     
