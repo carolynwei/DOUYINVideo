@@ -2,6 +2,10 @@ import streamlit as st
 import os
 from api_services import get_hot_topics, generate_script_json, generate_viral_script, refine_script_data
 from video_engine import render_ai_video_pipeline
+from db_manager import init_db, get_or_create_user, check_in, deduct_credits, get_user_credits
+
+# 启动时初始化数据库
+init_db()
 
 st.set_page_config(page_title="AI 视觉视频引擎", page_icon="🎬", layout="wide")
 
@@ -38,7 +42,36 @@ if 'hot_topics' not in st.session_state: st.session_state.hot_topics = []
 if 'scenes_data' not in st.session_state: st.session_state.scenes_data = []
 
 with st.sidebar:
-    st.header("⚙️ 引擎运行状态")
+    st.header("👤 用户中心")
+    
+    # 1. 简易登录框
+    if 'user_id' not in st.session_state:
+        st.session_state.user_id = ""
+    
+    user_id = st.text_input("👤 请输入用户名登录：", value=st.session_state.user_id, placeholder="直接输入即可自动创建", key="user_login")
+    
+    if user_id:
+        st.session_state.user_id = user_id
+        # 获取用户信息
+        user_info = get_or_create_user(user_id)
+        st.success(f"👋 欢迎, {user_id}！")
+        st.metric("📎 当前积分", user_info["credits"])
+        
+        # 2. 签到按钮
+        if st.button("📅 每日签到领积分", use_container_width=True):
+            success, msg = check_in(user_id)
+            if success:
+                st.success(msg)
+                st.rerun()  # 刷新页面更新积分显示
+            else:
+                st.info(msg)
+        
+        st.divider()
+    else:
+        st.warning("👈 请先输入用户名登录")
+        st.stop()
+    
+    st.header("⚙️ 核心引擎设置")
     
     # 🔑 自动从 secrets 读取，不再使用 st.text_input
     try:
@@ -53,7 +86,37 @@ with st.sidebar:
         st.stop()  # 如果没有密钥，停止后续运行
 
     st.info("💡 你的个人 API 密钥已通过 Streamlit Cloud 加密保护。")
-    
+        
+    st.divider()
+        
+    # 🧠 多模型选择器
+    st.header("🧠 大语言模型")
+        
+    # 定义模型配置表：包含显示名称、真实调用ID、每次调用的基础积分消耗
+    MODEL_CONFIG = {
+        "🧠 DeepSeek (性价比/基础润色)": {"id": "deepseek-chat", "cost": 1},
+        "🚀 GPT-4o (高智能/深度重写)": {"id": "gpt-4o", "cost": 5},
+        "🎨 Claude 3.5 Sonnet (文笔极佳/创意发散)": {"id": "claude-3-5-sonnet-20240620", "cost": 4}
+    }
+        
+    selected_model_label = st.selectbox(
+        "请选择大语言模型：",
+        list(MODEL_CONFIG.keys()),
+        help="不同模型的智能程度和创作风格有所不同"
+    )
+        
+    # 获取真实模型配置
+    current_model_id = MODEL_CONFIG[selected_model_label]["id"]
+    current_model_cost = MODEL_CONFIG[selected_model_label]["cost"]
+        
+    # 存储到 session_state 供后续使用
+    st.session_state.model_id = current_model_id
+    st.session_state.model_cost = current_model_cost
+        
+    st.info(f"💰 当前模型单次调用消耗: **{current_model_cost} 积分**")
+        
+    st.divider()
+        
     # 🎙️ 声音与情绪选择
     st.header("🎙️ 配音音色选择")
     
@@ -107,10 +170,18 @@ with col1:
         
         if script_mode == "🤖 标准 AI 导演":
             if st.button("🤖 呼叫 AI 导演写剧本", help="由 DeepSeek-V3 驱动，自动构思分镜与视觉指令"):
-                if not llm_api_key: st.error("请配置 DeepSeek Key")
+                if not llm_api_key: 
+                    st.error("请配置 DeepSeek Key")
                 else:
-                    with st.spinner("AI 导演构思中..."):
-                        st.session_state.scenes_data = generate_script_json(selected_topic, llm_api_key)
+                    # 💰 积分扣除检查
+                    model_cost = st.session_state.get('model_cost', 1)
+                    if deduct_credits(user_id, model_cost):
+                        with st.spinner(f"AI 导演构思中... (消耗 {model_cost} 积分)"):
+                            st.session_state.scenes_data = generate_script_json(selected_topic, llm_api_key)
+                        st.success(f"✅ 剧本生成成功！已扣除 {model_cost} 积分")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ 积分不足！当前操作需要 {model_cost} 积分。请明日签到或更换低消耗模型。")
         
         else:  # 爆款剧本大师模式
             if st.button("🔥 呼叫爆款剧本大师", help="顶尖爆款视频制作人 & 认知刺客，精通算法推流逻辑"):
