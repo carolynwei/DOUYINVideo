@@ -347,38 +347,53 @@ def add_scene_transitions(clips, transition_type='fade', transition_duration=0.5
     
     return result_clips
 
-# 🎭 情绪-参数路由表 (Emotion-Parameter Routing Table)
-# 基于“语义-情绪映射”的工业化架构
+# 🎭 情绪-参数路由表 v2.0 (Emotion-Parameter Routing Table)
+# 基于"语义-情绪映射"的工业化架构 + 节奏驱动转场
 VIBE_ROUTING_TABLE = {
     # 冷静类
     "cold_question": {
         "desc": "沉稳/冷淡/质疑",
         "edge_params": {"rate": "-5%", "pitch": "0%", "volume": "+0%"},
-        "volc_voice": "zh_male_junlangnanyou_emo_v2_mars_bigtts",  # 俊朗男友-冷静
+        "volc_voice": "zh_male_junlangnanyou_emo_v2_mars_bigtts",
+        "transition": "glitch",  # 故障艺术转场
+        "ken_burns": {"zoom_factor": 1.08, "direction": "in", "pan": "none"},
+        "beat_sync": {"pulse_on": "word", "intensity": 0.3}
     },
     "deep_mystery": {
         "desc": "悬疑/低沉/神秘",
         "edge_params": {"rate": "-10%", "pitch": "-10%", "volume": "-5%"},
         "volc_voice": "zh_male_junlangnanyou_emo_v2_mars_bigtts",
+        "transition": "fade_black",  # 黑场淡入
+        "ken_burns": {"zoom_factor": 1.05, "direction": "out", "pan": "slow_horizontal"},
+        "beat_sync": {"pulse_on": "sentence", "intensity": 0.2}
     },
     
     # 兴奋类
     "excited_announce": {
         "desc": "兴奋/宣告/惊喜",
         "edge_params": {"rate": "+10%", "pitch": "+15%", "volume": "+10%"},
-        "volc_voice": "zh_female_tianmeixiaomei_emo_moon_bigtts",  # 甜心小妹-兴奋
+        "volc_voice": "zh_female_tianmeixiaomei_emo_moon_bigtts",
+        "transition": "zoom_blur",  # 缩放模糊
+        "ken_burns": {"zoom_factor": 1.15, "direction": "in", "pan": "none"},
+        "beat_sync": {"pulse_on": "word", "intensity": 0.5}
     },
     
     # 愤怒类
     "angry_shout": {
         "desc": "嘶吼/愤怒/爆发",
         "edge_params": {"rate": "+15%", "pitch": "+10%", "volume": "+20%"},
-        "volc_voice": "zh_male_jingqiangkanye_emo_v2_mars_bigtts",  # 京腔侃爷-暴躁
+        "volc_voice": "zh_male_jingqiangkanye_emo_v2_mars_bigtts",
+        "transition": "shake_cut",  # 震动剪切
+        "ken_burns": {"zoom_factor": 1.2, "direction": "in", "pan": "shake"},
+        "beat_sync": {"pulse_on": "syllable", "intensity": 0.8}
     },
     "fierce_warning": {
         "desc": "猛烈/警告/喉哧",
         "edge_params": {"rate": "+10%", "pitch": "+5%", "volume": "+15%"},
         "volc_voice": "zh_male_jingqiangkanye_emo_v2_mars_bigtts",
+        "transition": "flash_white",  # 白场闪烁
+        "ken_burns": {"zoom_factor": 1.12, "direction": "in", "pan": "jitter"},
+        "beat_sync": {"pulse_on": "word", "intensity": 0.6}
     },
     
     # 崩溃类
@@ -386,6 +401,9 @@ VIBE_ROUTING_TABLE = {
         "desc": "崩溃/叹息/委屈",
         "edge_params": {"rate": "-15%", "pitch": "-15%", "volume": "-10%"},
         "volc_voice": "zh_male_junlangnanyou_emo_v2_mars_bigtts",
+        "transition": "slow_fade",  # 缓慢淡出
+        "ken_burns": {"zoom_factor": 1.03, "direction": "out", "pan": "vertical"},
+        "beat_sync": {"pulse_on": "sentence", "intensity": 0.15}
     },
     
     # 嘲讽类
@@ -393,6 +411,9 @@ VIBE_ROUTING_TABLE = {
         "desc": "嘲讽/嘲笑/轻蔑",
         "edge_params": {"rate": "+5%", "pitch": "-5%", "volume": "+5%"},
         "volc_voice": "zh_male_jingqiangkanye_emo_v2_mars_bigtts",
+        "transition": "whip_pan",  # 快速摇镜
+        "ken_burns": {"zoom_factor": 1.06, "direction": "in", "pan": "quick_horizontal"},
+        "beat_sync": {"pulse_on": "word", "intensity": 0.4}
     },
     
     # 中性类（默认）
@@ -400,6 +421,9 @@ VIBE_ROUTING_TABLE = {
         "desc": "中性/平静/叙述",
         "edge_params": {"rate": "+0%", "pitch": "+0%", "volume": "+0%"},
         "volc_voice": "zh_male_junlangnanyou_emo_v2_mars_bigtts",
+        "transition": "crossfade",  # 标准淡入淡出
+        "ken_burns": {"zoom_factor": 1.1, "direction": "in" if random.random() > 0.5 else "out", "pan": "none"},
+        "beat_sync": {"pulse_on": "sentence", "intensity": 0.2}
     },
 }
 
@@ -1201,3 +1225,200 @@ class VideoAssembler:
         st.info("🚧 视频渲染功能待完善，当前仅生成音频轨")
         
         return True
+
+
+# ==================== 🎬 电影级转场系统 v2.0 ====================
+
+def apply_glitch_transition(clip1, clip2, duration=0.3):
+    """
+    故障艺术转场 - 认知刺客流专用
+    模拟数字信号干扰效果
+    """
+    from moviepy.editor import concatenate_videoclips, ColorClip
+    
+    # 创建故障帧
+    w, h = clip1.size
+    
+    def make_glitch_frame(t):
+        # 随机切片和位移
+        import numpy as np
+        frame = clip1.get_frame(clip1.duration - duration + t)
+        if t > duration / 2:
+            frame = clip2.get_frame(t - duration / 2)
+        
+        # 添加RGB分离效果
+        shift = int(10 * math.sin(t * 50))
+        frame_shifted = np.roll(frame, shift, axis=1)
+        
+        # 混合原始帧和位移帧
+        result = frame * 0.7 + frame_shifted * 0.3
+        return result.astype(np.uint8)
+    
+    glitch_clip = ColorClip(size=(w, h), color=(0, 0, 0), duration=duration)
+    glitch_clip = glitch_clip.set_make_frame(make_glitch_frame)
+    
+    return concatenate_videoclips([
+        clip1.subclip(0, clip1.duration - duration/2),
+        glitch_clip,
+        clip2.subclip(duration/2)
+    ])
+
+
+def apply_zoom_blur_transition(clip1, clip2, duration=0.4):
+    """
+    缩放模糊转场 - 情绪宣泄流专用
+    快速缩放伴随动态模糊
+    """
+    def zoom_with_blur(get_frame, t):
+        frame = get_frame(t)
+        progress = t / duration
+        
+        # 缩放因子：快速放大然后切换
+        if progress < 0.5:
+            scale = 1.0 + progress * 0.5
+        else:
+            scale = 1.25 - (progress - 0.5) * 0.5
+        
+        # 应用缩放
+        from scipy import ndimage
+        zoomed = ndimage.zoom(frame, (scale, scale, 1), order=1)
+        
+        # 裁剪回原始大小
+        h, w = frame.shape[:2]
+        zh, zw = zoomed.shape[:2]
+        start_y = (zh - h) // 2
+        start_x = (zw - w) // 2
+        return zoomed[start_y:start_y+h, start_x:start_x+w]
+    
+    # 创建过渡片段
+    transition = clip1.fx(vfx.freeze, t=clip1.duration-duration, freeze_duration=duration)
+    transition = transition.fl(zoom_with_blur)
+    
+    from moviepy.editor import concatenate_videoclips
+    return concatenate_videoclips([
+        clip1.subclip(0, clip1.duration - duration),
+        transition,
+        clip2.subclip(duration)
+    ])
+
+
+def apply_whip_pan_transition(clip1, clip2, duration=0.3, direction='right'):
+    """
+    快速摇镜转场 - 嘲讽/快节奏风格
+    模拟相机快速甩动
+    """
+    w, h = clip1.size
+    
+    def whip_pan(get_frame, t):
+        progress = t / duration
+        # 快速加速然后减速
+        ease = 1 - math.pow(1 - progress, 3)
+        
+        if progress < 0.5:
+            # 第一个画面甩出
+            frame = get_frame(t)
+            offset = int(w * ease * 0.8)
+        else:
+            # 第二个画面甩入
+            frame = get_frame(t)
+            offset = int(w * (1 - ease) * 0.8)
+        
+        # 创建运动模糊效果
+        from scipy import ndimage
+        blurred = ndimage.gaussian_filter1d(frame, sigma=5 * ease, axis=0 if direction == 'vertical' else 1)
+        return blurred
+    
+    transition = clip1.fx(vfx.freeze, t=clip1.duration-duration, freeze_duration=duration)
+    transition = transition.fl(whip_pan)
+    
+    from moviepy.editor import concatenate_videoclips
+    return concatenate_videoclips([
+        clip1.subclip(0, clip1.duration - duration),
+        transition,
+        clip2.subclip(duration)
+    ])
+
+
+def apply_beat_sync_zoom(clip, emotion_vibe, audio_beats=None):
+    """
+    节奏同步缩放 - 根据情绪在特定节拍上产生脉冲效果
+    
+    Args:
+        clip: 视频片段
+        emotion_vibe: 情绪标签
+        audio_beats: 音频节拍时间点列表（可选）
+    """
+    vibe_config = VIBE_ROUTING_TABLE.get(emotion_vibe, VIBE_ROUTING_TABLE["neutral_narrate"])
+    beat_config = vibe_config.get("beat_sync", {})
+    intensity = beat_config.get("intensity", 0.2)
+    pulse_on = beat_config.get("pulse_on", "sentence")
+    
+    duration = clip.duration
+    
+    def beat_pulse(t):
+        # 基础缩放
+        base_scale = 1.0
+        
+        # 根据 pulse_on 设置脉冲频率
+        if pulse_on == "syllable":
+            # 每个音节脉冲（最快）
+            pulse_freq = 8
+        elif pulse_on == "word":
+            # 每个词脉冲
+            pulse_freq = 4
+        else:  # sentence
+            # 每句脉冲（最慢）
+            pulse_freq = 1
+        
+        # 生成脉冲
+        pulse = math.sin(2 * math.pi * pulse_freq * t / duration)
+        scale = base_scale + intensity * (pulse + 1) / 2
+        
+        return scale
+    
+    return clip.resize(lambda t: beat_pulse(t))
+
+
+def apply_style_transition(clip1, clip2, emotion_vibe, duration=0.3):
+    """
+    根据情绪自动选择合适的转场效果
+    
+    Args:
+        clip1: 前一个片段
+        clip2: 后一个片段
+        emotion_vibe: 情绪标签，决定转场类型
+        duration: 转场时长
+    
+    Returns:
+        带有转场的合成片段
+    """
+    vibe_config = VIBE_ROUTING_TABLE.get(emotion_vibe, VIBE_ROUTING_TABLE["neutral_narrate"])
+    transition_type = vibe_config.get("transition", "crossfade")
+    
+    if transition_type == "glitch":
+        return apply_glitch_transition(clip1, clip2, duration)
+    elif transition_type == "zoom_blur":
+        return apply_zoom_blur_transition(clip1, clip2, duration)
+    elif transition_type == "whip_pan":
+        return apply_whip_pan_transition(clip1, clip2, duration)
+    elif transition_type == "fade_black":
+        # 黑场淡入
+        from moviepy.editor import concatenate_videoclips, ColorClip
+        black = ColorClip(size=clip1.size, color=(0, 0, 0), duration=duration/2)
+        return concatenate_videoclips([
+            clip1.fadeout(duration/2),
+            black,
+            clip2.fadein(duration/2)
+        ])
+    elif transition_type == "flash_white":
+        # 白场闪烁
+        from moviepy.editor import concatenate_videoclips, ColorClip
+        white = ColorClip(size=clip1.size, color=(255, 255, 255), duration=0.1)
+        return concatenate_videoclips([
+            clip1.subclip(0, clip1.duration - 0.15),
+            white,
+            clip2.subclip(0.15)
+        ])
+    else:
+        # 默认淡入淡出
+        return concatenate_videoclips([clip1, clip2], method="compose")
