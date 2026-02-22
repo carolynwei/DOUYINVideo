@@ -72,6 +72,9 @@ with col1:
             help="标准模式：快速生成基础脚本 | 爆款模式：运用心理学+导演美学+高能量文案"
         )
         
+        # 👑 新增：画面提示词生成模式切换
+        auto_image_mode = st.toggle("🤖 AI 自动生成画面分镜", value=True, help="关闭后，AI 将只写脚本文案，画面分镜由您手动输入")
+        
         if script_mode == "🤖 标准 AI 导演":
             if st.button("🤖 呼叫 AI 导演写剧本", help="由 DeepSeek-V3 驱动，自动构思分镜与视觉指令"):
                 if not llm_api_key: st.error("请配置 DeepSeek Key")
@@ -87,16 +90,21 @@ with col1:
                         st.write("📖 分析主题，选定心理学武器...")
                         st.write("🪝 构思黄金3秒Hook...")
                         st.write("✍️ 撰写高能量刺客文案...")
-                        st.write("🎥 生成导演级分镜提示词...")
                         
-                        # 调用爆款剧本生成函数
-                        viral_script = generate_viral_script(selected_topic, llm_api_key)
+                        if auto_image_mode:
+                            st.write("🎥 自动生成导演级分镜提示词...")
+                        else:
+                            st.write("⏸️ 画面分镜留空，等待人类导演指示...")
+                        
+                        # 把前端的开关状态传给后台函数
+                        viral_script = generate_viral_script(selected_topic, llm_api_key, auto_image_prompt=auto_image_mode)
                         
                         if viral_script:
                             st.session_state.scenes_data = viral_script
                             status.update(label="✅ 爆款剧本创作完成！", state="complete", expanded=False)
                         else:
                             status.update(label="❌ 创作失败", state="error")
+
 
 with col2:
     st.subheader("✍️ 编导微调台")

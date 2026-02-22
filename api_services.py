@@ -45,12 +45,19 @@ def generate_script_json(topic, api_key):
         st.error(f"剧本生成失败: {e}")
         return []
 
-def generate_viral_script(topic, api_key):
+def generate_viral_script(topic, api_key, auto_image_prompt=True):
     """🔥 使用爆款剧本大师 Agent 生成高能量脚本 (注入完整 Skill)"""
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1".strip())
     
+    # 动态设定关于画面提示词的指令
+    if auto_image_prompt:
+        image_prompt_instruction = '"image_prompt": "导演级分镜提示词（必须全英文，包含光影、运镜及大师风格，如 \'Brandon Li style, hand-held tracking shot...\'）"'
+    else:
+        # 手动模式下，强行让 AI 留空
+        image_prompt_instruction = '"image_prompt": "" // 保持为空字符串，留给人类导演稍后手动填写'
+    
     # 🎯 终极爆款剧本大师 System Prompt (深度注入运营日记精髓)
-    viral_system_prompt = """你是全网最顶尖的抖音爆款视频制作人、深谙人性的"认知刺客"。你精通算法推流底层逻辑（完播率>30%，点赞率>5%）。你的任务是根据用户主题，输出一套招招致命、毫无废话的爆款短视频脚本与分镜。
+    viral_system_prompt = f"""你是全网最顶尖的抖音爆款视频制作人、深谙人性的"认知刺客"。你精通算法推流底层逻辑（完播率>30%，点赞率>5%）。你的任务是根据用户主题，输出一套招招致命、毫无废话的爆款短视频脚本与分镜。
 
 **【核心知识库与强制执行规则】**
 
@@ -76,10 +83,10 @@ def generate_viral_script(topic, api_key):
 **【严格输出格式要求】**
 必须严格输出纯 JSON 数组，包含 4-6 个高能量分镜，不要输出任何 Markdown 标记（如 ```json）或其他解释性文字。格式如下：
 [
-  {
+  {{
     "narration": "刺客文案（第一句必须是极具冲击力的黄金3秒Hook，后续文案严格运用三步删改法，高能量密度）",
-    "image_prompt": "导演级分镜提示词（必须全英文，包含光影、运镜及上述大师风格，如 'Brandon Li style, hand-held tracking shot...'）"
-  }
+    {image_prompt_instruction}
+  }}
 ]"""
 
     try:
