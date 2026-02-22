@@ -103,10 +103,14 @@ def render_script_view(
         refine_script_by_chat_func: 对话微调剧本函数
         render_ai_video_pipeline_func: 视频渲染函数
     """
-    from views.components.hero_section import hero_section
-    
     # 🎬 Hero Section - 品牌视觉冲击
-    hero_section()
+    try:
+        from views.components.hero_section import hero_section
+        hero_section()
+    except Exception as e:
+        # 如果组件加载失败，显示简化版标题
+        st.title("🚖 VideoTaxi")
+        st.caption("让流量为你 7x24 小时跑单")
     
     # 使用标签页组织内容
     script_tab1, script_tab2 = st.tabs(["🎯 快速创作", "⚙️ 高级设置"])
