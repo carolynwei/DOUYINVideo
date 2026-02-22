@@ -118,11 +118,12 @@ VOICE_MAPPING = {
 def render_sidebar(api_keys):
     """渲染侧边栏"""
     with st.sidebar:
-        # Logo
-        # 🚖 出租车图标
+        # Logo + Slogan
         st.markdown("""
         <div style="text-align: center; padding: 20px 0;">
-            <span style="font-size: 64px;">🚖</span>
+            <div style="font-size: 64px; margin-bottom: 10px;">🚖</div>
+            <div style="font-size: 22px; font-weight: 800; color: #FF3131; margin-bottom: 8px;">VideoTaxi</div>
+            <div style="font-size: 13px; color: #8b949e; font-weight: 500; letter-spacing: 1px;">在抖音公路上自由驰骋</div>
         </div>
         """, unsafe_allow_html=True)
         
