@@ -27,6 +27,71 @@ from moviepy.editor import (
     vfx, TextClip
 )
 
+# ==================== MoviePy 2.x 兼容性修复 ====================
+
+def safe_resize_clip(clip, newsize):
+    """
+    安全地调整 clip 大小，避免 MoviePy resize 的 ANTIALIAS 兼容性问题
+    使用 Pillow 进行高质量缩放
+    
+    Args:
+        clip: ImageClip 或 VideoClip 对象
+        newsize: (width, height) 元组
+    
+    Returns:
+        缩放后的 clip
+    """
+    def make_frame(t):
+        frame = clip.get_frame(t)
+        pil_img = Image.fromarray(frame)
+        pil_img = pil_img.resize(newsize, Image.LANCZOS)
+        return np.array(pil_img)
+    
+    from moviepy.video.VideoClip import VideoClip
+    return VideoClip(make_frame, duration=clip.duration).set_fps(clip.fps if hasattr(clip, 'fps') else 24)
+
+
+def safe_resize_with_transform(clip, size_func, position_func=None):
+    """
+    带动态变换的安全 resize，用于 Ken Burns 等动画效果
+    
+    Args:
+        clip: 输入 clip
+        size_func: 函数，接收 t 返回 (width, height)
+        position_func: 可选，函数，接收 t 返回 (x, y)
+    
+    Returns:
+        变换后的 clip
+    """
+    w, h = clip.size
+    
+    def make_frame(t):
+        frame = clip.get_frame(t)
+        new_size = size_func(t)
+        
+        # 使用 Pillow 进行高质量缩放
+        pil_img = Image.fromarray(frame)
+        pil_img = pil_img.resize(new_size, Image.LANCZOS)
+        
+        # 如果需要位置变换，进行裁剪
+        if position_func:
+            pos_x, pos_y = position_func(t)
+            # 创建黑色背景
+            result = Image.new('RGB', (w, h), (0, 0, 0))
+            # 粘贴图像
+            paste_x = max(0, int(pos_x))
+            paste_y = max(0, int(pos_y))
+            result.paste(pil_img, (paste_x, paste_y))
+            return np.array(result)
+        else:
+            return np.array(pil_img)
+    
+    from moviepy.video.VideoClip import VideoClip
+    new_clip = VideoClip(make_frame, duration=clip.duration)
+    if hasattr(clip, 'fps') and clip.fps:
+        new_clip = new_clip.set_fps(clip.fps)
+    return new_clip
+
 
 def clean_ssml_for_subtitle(text):
     """
@@ -59,6 +124,7 @@ def clean_ssml_for_subtitle(text):
 def apply_ken_burns_effect(clip, duration, zoom_factor=1.15, direction='in'):
     """
     Ken Burns 效果 - 缓慢缩放平移，让静态图片产生动态感
+    使用 Pillow 预处理避免 MoviePy resize 的 ANTIALIAS 兼容性问题
     
     Args:
         clip: ImageClip 对象
@@ -66,10 +132,31 @@ def apply_ken_burns_effect(clip, duration, zoom_factor=1.15, direction='in'):
         zoom_factor: 缩放倍数 (1.0 = 无缩放)
         direction: 'in'(放大) 或 'out'(缩小)
     """
-    if direction == 'in':
-        return clip.resize(lambda t: 1 + (zoom_factor - 1) * t / duration)
-    else:
-        return clip.resize(lambda t: zoom_factor - (zoom_factor - 1) * t / duration)
+    w, h = clip.size
+    
+    def make_frame(t):
+        progress = t / duration
+        if direction == 'in':
+            scale = 1 + (zoom_factor - 1) * progress
+        else:
+            scale = zoom_factor - (zoom_factor - 1) * progress
+        
+        frame = clip.get_frame(t)
+        pil_img = Image.fromarray(frame)
+        new_w, new_h = int(w * scale), int(h * scale)
+        pil_img = pil_img.resize((new_w, new_h), Image.LANCZOS)
+        
+        # 裁剪回原始尺寸（居中）
+        left = (new_w - w) // 2
+        top = (new_h - h) // 2
+        right = left + w
+        bottom = top + h
+        pil_img = pil_img.crop((left, top, right, bottom))
+        
+        return np.array(pil_img)
+    
+    from moviepy.video.VideoClip import VideoClip
+    return VideoClip(make_frame, duration=duration).set_fps(clip.fps if hasattr(clip, 'fps') else 24)
 
 
 def apply_subtle_pan(clip, duration, pan_direction='horizontal'):
@@ -115,17 +202,35 @@ def apply_fade_transition(clip, duration, fade_in=0.5, fade_out=0.5):
 def apply_subtle_zoom_pulse(clip, duration, pulse_count=2):
     """
     轻微呼吸感缩放 - 模拟心跳/呼吸节奏
+    使用 Pillow 预处理避免 MoviePy resize 的 ANTIALIAS 兼容性问题
     
     Args:
         clip: ImageClip 对象
         duration: 视频时长
         pulse_count: 呼吸次数
     """
-    def pulse_resize(t):
-        pulse = math.sin(2 * math.pi * pulse_count * t / duration)
-        return 1.0 + 0.03 * pulse
+    w, h = clip.size
     
-    return clip.resize(pulse_resize)
+    def make_frame(t):
+        pulse = math.sin(2 * math.pi * pulse_count * t / duration)
+        scale = 1.0 + 0.03 * pulse
+        
+        frame = clip.get_frame(t)
+        pil_img = Image.fromarray(frame)
+        new_w, new_h = int(w * scale), int(h * scale)
+        pil_img = pil_img.resize((new_w, new_h), Image.LANCZOS)
+        
+        # 裁剪回原始尺寸（居中）
+        left = (new_w - w) // 2
+        top = (new_h - h) // 2
+        right = left + w
+        bottom = top + h
+        pil_img = pil_img.crop((left, top, right, bottom))
+        
+        return np.array(pil_img)
+    
+    from moviepy.video.VideoClip import VideoClip
+    return VideoClip(make_frame, duration=duration).set_fps(clip.fps if hasattr(clip, 'fps') else 24)
 
 
 def create_animated_scene(bg_clip, txt_clip, duration, style_name=None, scene_index=0):
@@ -188,45 +293,95 @@ def create_animated_scene(bg_clip, txt_clip, duration, style_name=None, scene_in
 def apply_cinematic_push(clip, duration, intensity=1.15):
     """
     电影级镜头推进效果 - 模拟专业摄像机的推进镜头
+    使用 Pillow 预处理避免 MoviePy resize 的 ANTIALIAS 兼容性问题
     """
-    def push_resize(t):
+    w, h = clip.size
+    
+    def make_frame(t):
         progress = t / duration
         ease = 1 - math.pow(1 - progress, 3)
-        return 1.0 + (intensity - 1.0) * ease
-    
-    def push_position(t):
-        progress = t / duration
-        w, h = clip.size
+        scale = 1.0 + (intensity - 1.0) * ease
+        
         center_x = w * 0.02 * progress
         center_y = h * 0.01 * progress
-        return (-center_x, -center_y)
+        pos_x, pos_y = -center_x, -center_y
+        
+        frame = clip.get_frame(t)
+        pil_img = Image.fromarray(frame)
+        new_w, new_h = int(w * scale), int(h * scale)
+        pil_img = pil_img.resize((new_w, new_h), Image.LANCZOS)
+        
+        # 裁剪回原始尺寸
+        left = max(0, int(-pos_x))
+        top = max(0, int(-pos_y))
+        right = min(new_w, left + w)
+        bottom = min(new_h, top + h)
+        
+        result = Image.new('RGB', (w, h), (0, 0, 0))
+        crop = pil_img.crop((left, top, right, bottom))
+        paste_x = max(0, int(pos_x))
+        paste_y = max(0, int(pos_y))
+        result.paste(crop, (paste_x, paste_y))
+        
+        return np.array(result)
     
-    animated = clip.resize(push_resize)
-    return animated.set_position(push_position)
+    from moviepy.video.VideoClip import VideoClip
+    return VideoClip(make_frame, duration=duration).set_fps(clip.fps if hasattr(clip, 'fps') else 24)
 
 
 def apply_cinematic_ken_burns(clip, duration, zoom_factor=1.12, direction='in'):
     """
     电影级 Ken Burns 效果 - 更平滑的缩放和移动
+    使用 Pillow 预处理避免 MoviePy resize 的 ANTIALIAS 兼容性问题
     """
-    def smooth_resize(t):
-        progress = t / duration
-        if direction == 'in':
-            return 1.0 + (zoom_factor - 1.0) * (0.5 - 0.5 * math.cos(progress * math.pi))
-        else:
-            return zoom_factor - (zoom_factor - 1.0) * (0.5 - 0.5 * math.cos(progress * math.pi))
+    from PIL import Image as PILImage
     
-    def smooth_pan(t):
+    w, h = clip.size
+    
+    # 预生成关键帧，使用 Pillow 进行高质量缩放
+    def make_frame(t):
         progress = t / duration
-        w, h = clip.size
+        
+        # 计算缩放因子
+        if direction == 'in':
+            scale = 1.0 + (zoom_factor - 1.0) * (0.5 - 0.5 * math.cos(progress * math.pi))
+        else:
+            scale = zoom_factor - (zoom_factor - 1.0) * (0.5 - 0.5 * math.cos(progress * math.pi))
+        
+        # 计算位移
         offset = 0.03 * (0.5 - 0.5 * math.cos(progress * math.pi))
         if direction == 'in':
-            return (-w * offset, -h * offset * 0.5)
+            pos_x, pos_y = -w * offset, -h * offset * 0.5
         else:
-            return (w * (offset - 0.03), -h * offset * 0.5)
+            pos_x, pos_y = w * (offset - 0.03), -h * offset * 0.5
+        
+        # 获取原始帧
+        frame = clip.get_frame(t)
+        
+        # 使用 Pillow 进行高质量缩放
+        pil_img = PILImage.fromarray(frame)
+        new_w, new_h = int(w * scale), int(h * scale)
+        pil_img = pil_img.resize((new_w, new_h), PILImage.LANCZOS)
+        
+        # 裁剪回原始尺寸
+        left = max(0, int(-pos_x))
+        top = max(0, int(-pos_y))
+        right = min(new_w, left + w)
+        bottom = min(new_h, top + h)
+        
+        # 创建黑色背景
+        result = PILImage.new('RGB', (w, h), (0, 0, 0))
+        
+        # 粘贴缩放后的图像
+        crop = pil_img.crop((left, top, right, bottom))
+        paste_x = max(0, int(pos_x))
+        paste_y = max(0, int(pos_y))
+        result.paste(crop, (paste_x, paste_y))
+        
+        return np.array(result)
     
-    animated = clip.resize(smooth_resize)
-    return animated.set_position(smooth_pan)
+    from moviepy.video.io.VideoFileClip import VideoClip
+    return VideoClip(make_frame, duration=duration)
 
 
 def apply_shake_effect(clip, duration, intensity=0.02):
@@ -245,66 +400,137 @@ def apply_shake_effect(clip, duration, intensity=0.02):
 def apply_zoom_pulse(clip, duration, pulse_count=2, intensity=0.05):
     """
     心跳式缩放 - 强调节奏感
+    使用 Pillow 预处理避免 MoviePy resize 的 ANTIALIAS 兼容性问题
     """
-    def pulse_resize(t):
+    w, h = clip.size
+    
+    def make_frame(t):
         progress = t / duration
         pulse = math.sin(2 * math.pi * pulse_count * progress)
-        return 1.0 + intensity * (pulse + 1) / 2
+        scale = 1.0 + intensity * (pulse + 1) / 2
+        
+        frame = clip.get_frame(t)
+        pil_img = Image.fromarray(frame)
+        new_w, new_h = int(w * scale), int(h * scale)
+        pil_img = pil_img.resize((new_w, new_h), Image.LANCZOS)
+        
+        # 裁剪回原始尺寸（居中）
+        left = (new_w - w) // 2
+        top = (new_h - h) // 2
+        right = left + w
+        bottom = top + h
+        pil_img = pil_img.crop((left, top, right, bottom))
+        
+        return np.array(pil_img)
     
-    return clip.resize(pulse_resize)
+    from moviepy.video.VideoClip import VideoClip
+    return VideoClip(make_frame, duration=duration).set_fps(clip.fps if hasattr(clip, 'fps') else 24)
 
 
 def apply_first_person_walk(clip, duration, speed=1.0):
     """
     第一人称行走效果 - 模拟 POV 镜头移动
+    使用 Pillow 预处理避免 MoviePy resize 的 ANTIALIAS 兼容性问题
     """
-    def walk_position(t):
-        w, h = clip.size
+    w, h = clip.size
+    
+    def make_frame(t):
         progress = t / duration
+        scale = 1.0 + 0.08 * progress
         sway = math.sin(progress * 4 * math.pi) * 0.01 * w
         bob = math.sin(progress * 8 * math.pi) * 0.005 * h
-        return (sway, bob)
+        pos_x, pos_y = sway, bob
+        
+        frame = clip.get_frame(t)
+        pil_img = Image.fromarray(frame)
+        new_w, new_h = int(w * scale), int(h * scale)
+        pil_img = pil_img.resize((new_w, new_h), Image.LANCZOS)
+        
+        # 裁剪回原始尺寸
+        left = max(0, int(-pos_x))
+        top = max(0, int(-pos_y))
+        right = min(new_w, left + w)
+        bottom = min(new_h, top + h)
+        
+        result = Image.new('RGB', (w, h), (0, 0, 0))
+        crop = pil_img.crop((left, top, right, bottom))
+        paste_x = max(0, int(pos_x))
+        paste_y = max(0, int(pos_y))
+        result.paste(crop, (paste_x, paste_y))
+        
+        return np.array(result)
     
-    def walk_resize(t):
-        progress = t / duration
-        return 1.0 + 0.08 * progress
-    
-    animated = clip.resize(walk_resize)
-    return animated.set_position(walk_position)
+    from moviepy.video.VideoClip import VideoClip
+    return VideoClip(make_frame, duration=duration).set_fps(clip.fps if hasattr(clip, 'fps') else 24)
 
 
 def apply_gentle_float(clip, duration):
     """
     轻柔漂浮效果 - 适合生活类、治愈类内容
+    使用 Pillow 预处理避免 MoviePy resize 的 ANTIALIAS 兼容性问题
     """
-    def float_position(t):
-        w, h = clip.size
+    w, h = clip.size
+    
+    def make_frame(t):
         progress = t / duration
+        scale = 1.0 + 0.03 * math.sin(progress * 2 * math.pi)
         radius = 0.02
-        x = math.cos(progress * 2 * math.pi) * radius * w
-        y = math.sin(progress * 2 * math.pi) * radius * h * 0.5
-        return (x, y)
+        pos_x = math.cos(progress * 2 * math.pi) * radius * w
+        pos_y = math.sin(progress * 2 * math.pi) * radius * h * 0.5
+        
+        frame = clip.get_frame(t)
+        pil_img = Image.fromarray(frame)
+        new_w, new_h = int(w * scale), int(h * scale)
+        pil_img = pil_img.resize((new_w, new_h), Image.LANCZOS)
+        
+        # 裁剪回原始尺寸
+        left = max(0, int(-pos_x))
+        top = max(0, int(-pos_y))
+        right = min(new_w, left + w)
+        bottom = min(new_h, top + h)
+        
+        result = Image.new('RGB', (w, h), (0, 0, 0))
+        crop = pil_img.crop((left, top, right, bottom))
+        paste_x = max(0, int(pos_x))
+        paste_y = max(0, int(pos_y))
+        result.paste(crop, (paste_x, paste_y))
+        
+        return np.array(result)
     
-    def gentle_zoom(t):
-        progress = t / duration
-        return 1.0 + 0.03 * math.sin(progress * 2 * math.pi)
-    
-    animated = clip.resize(gentle_zoom)
-    return animated.set_position(float_position)
+    from moviepy.video.VideoClip import VideoClip
+    return VideoClip(make_frame, duration=duration).set_fps(clip.fps if hasattr(clip, 'fps') else 24)
 
 
 def apply_meme_zoom(clip, duration):
     """
     Meme 风格快速缩放 - 强调冲击力
+    使用 Pillow 预处理避免 MoviePy resize 的 ANTIALIAS 兼容性问题
     """
-    def meme_resize(t):
+    w, h = clip.size
+    
+    def make_frame(t):
         progress = t / duration
         if progress < 0.1:
-            return 1.0 + 0.1 * (progress / 0.1)
+            scale = 1.0 + 0.1 * (progress / 0.1)
         else:
-            return 1.1
+            scale = 1.1
+        
+        frame = clip.get_frame(t)
+        pil_img = Image.fromarray(frame)
+        new_w, new_h = int(w * scale), int(h * scale)
+        pil_img = pil_img.resize((new_w, new_h), Image.LANCZOS)
+        
+        # 裁剪回原始尺寸（居中）
+        left = (new_w - w) // 2
+        top = (new_h - h) // 2
+        right = left + w
+        bottom = top + h
+        pil_img = pil_img.crop((left, top, right, bottom))
+        
+        return np.array(pil_img)
     
-    return clip.resize(meme_resize)
+    from moviepy.video.VideoClip import VideoClip
+    return VideoClip(make_frame, duration=duration).set_fps(clip.fps if hasattr(clip, 'fps') else 24)
 
 
 def apply_cinematic_fade(clip, duration, fade_in=0.4, fade_out=0.4):
@@ -1366,6 +1592,7 @@ def apply_whip_pan_transition(clip1, clip2, duration=0.3, direction='right'):
 def apply_beat_sync_zoom(clip, emotion_vibe, audio_beats=None):
     """
     节奏同步缩放 - 根据情绪在特定节拍上产生脉冲效果
+    使用 Pillow 预处理避免 MoviePy resize 的 ANTIALIAS 兼容性问题
     
     Args:
         clip: 视频片段
@@ -1378,29 +1605,37 @@ def apply_beat_sync_zoom(clip, emotion_vibe, audio_beats=None):
     pulse_on = beat_config.get("pulse_on", "sentence")
     
     duration = clip.duration
+    w, h = clip.size
     
-    def beat_pulse(t):
-        # 基础缩放
-        base_scale = 1.0
-        
-        # 根据 pulse_on 设置脉冲频率
-        if pulse_on == "syllable":
-            # 每个音节脉冲（最快）
-            pulse_freq = 8
-        elif pulse_on == "word":
-            # 每个词脉冲
-            pulse_freq = 4
-        else:  # sentence
-            # 每句脉冲（最慢）
-            pulse_freq = 1
-        
+    # 根据 pulse_on 设置脉冲频率
+    if pulse_on == "syllable":
+        pulse_freq = 8
+    elif pulse_on == "word":
+        pulse_freq = 4
+    else:  # sentence
+        pulse_freq = 1
+    
+    def make_frame(t):
         # 生成脉冲
         pulse = math.sin(2 * math.pi * pulse_freq * t / duration)
-        scale = base_scale + intensity * (pulse + 1) / 2
+        scale = 1.0 + intensity * (pulse + 1) / 2
         
-        return scale
+        frame = clip.get_frame(t)
+        pil_img = Image.fromarray(frame)
+        new_w, new_h = int(w * scale), int(h * scale)
+        pil_img = pil_img.resize((new_w, new_h), Image.LANCZOS)
+        
+        # 裁剪回原始尺寸（居中）
+        left = (new_w - w) // 2
+        top = (new_h - h) // 2
+        right = left + w
+        bottom = top + h
+        pil_img = pil_img.crop((left, top, right, bottom))
+        
+        return np.array(pil_img)
     
-    return clip.resize(lambda t: beat_pulse(t))
+    from moviepy.video.VideoClip import VideoClip
+    return VideoClip(make_frame, duration=duration).set_fps(clip.fps if hasattr(clip, 'fps') else 24)
 
 
 def apply_style_transition(clip1, clip2, emotion_vibe, duration=0.3):
