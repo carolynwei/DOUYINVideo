@@ -350,20 +350,40 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
         return []
 
 def generate_images_zhipu(scenes_data, api_key):
-    """调用智谱 CogView-3-Plus"""
-    url = "https://open.bigmodel.cn/api/paas/v4/images/generations".strip()  # 🔑 核心修复：清理URL
+    """调用智谱 CogView-3-Plus - 优化版：增强图片质量"""
+    url = "https://open.bigmodel.cn/api/paas/v4/images/generations".strip()
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
     image_paths = []
     
+    # 画质增强后缀（添加到每个提示词）
+    quality_enhancement = ", ultra high quality, 8k uhd, professional photography, sharp focus, highly detailed, cinematic lighting, best quality, masterpiece"
+    
     for i, scene in enumerate(scenes_data):
         # 🔍 检查 image_prompt 是否为空
-        if not scene.get('image_prompt') or scene['image_prompt'].strip() == "":
+        raw_prompt = scene.get('image_prompt', '')
+        if not raw_prompt or raw_prompt.strip() == "":
             st.warning(f"⚠️ 分镜 {i+1} 的 image_prompt 为空，跳过图片生成")
             image_paths.append(None)
             continue
+        
+        # 🎨 优化提示词：添加质量增强后缀
+        enhanced_prompt = raw_prompt.strip()
+        # 如果提示词已经有质量词，避免重复
+        if not any(q in enhanced_prompt.lower() for q in ['8k', 'masterpiece', 'best quality']):
+            enhanced_prompt += quality_enhancement
             
-        payload = {"model": "cogview-3-plus", "prompt": scene['image_prompt'], "size": "1024x1920"}
+        # 确保提示词长度合适（智谱有长度限制）
+        if len(enhanced_prompt) > 500:
+            enhanced_prompt = enhanced_prompt[:497] + "..."
+            
+        payload = {
+            "model": "cogview-3-plus", 
+            "prompt": enhanced_prompt, 
+            "size": "1024x1920"
+        }
+        
         st.toast(f"🎨 正在绘制分镜 {i+1}/{len(scenes_data)} ...")
+        st.caption(f"📝 优化后提示词: {enhanced_prompt[:80]}...")
         
         try:
             res = requests.post(url, json=payload, headers=headers, timeout=60).json()

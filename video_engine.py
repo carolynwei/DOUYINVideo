@@ -17,9 +17,29 @@ import uuid
 import subprocess
 import sys
 import random
+import re
 from PIL import Image, ImageDraw, ImageFont
 import streamlit as st
 from moviepy.editor import AudioFileClip, ImageClip, ColorClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip, afx, concatenate_audioclips
+
+
+def clean_ssml_for_subtitle(text):
+    """
+    清理 SSML 标签，提取纯文本用于字幕显示
+    
+    输入: "<prosody rate='fast'>这是真相</prosody>"
+    输出: "这是真相"
+    """
+    if not text:
+        return ""
+    
+    # 移除所有 XML/HTML 标签
+    clean_text = re.sub(r'<[^>]+>', '', text)
+    
+    # 移除多余空格
+    clean_text = ' '.join(clean_text.split())
+    
+    return clean_text
 
 # 🎭 情绪-参数路由表 (Emotion-Parameter Routing Table)
 # 基于“语义-情绪映射”的工业化架构
@@ -617,7 +637,9 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
             bg = ColorClip(size=(1080, 1920), color=(0, 0, 0)).set_duration(dur)
 
         # 🎨 字幕逻辑：用 Pillow 手工绘制 + 正确处理透明度
-        subtitle_rgba = create_subtitle_image(scene['narration'], width=1080, height=400, fontsize=70)
+        # 清理 SSML 标签，只保留纯文本
+        clean_narration = clean_ssml_for_subtitle(scene['narration'])
+        subtitle_rgba = create_subtitle_image(clean_narration, width=1080, height=400, fontsize=70)
         
         # 🔑 核心修复：拆分 RGB 和 Alpha 通道，确保透明度正确
         # RGBA 数组的前3个通道是颜色，第4个通道是透明度

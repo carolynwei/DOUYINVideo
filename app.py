@@ -414,60 +414,47 @@ if 'chat_history' not in st.session_state: st.session_state.chat_history = []  #
 if 'voice_id' not in st.session_state: st.session_state.voice_id = "zh-CN-YunxiNeural"
 
 with st.sidebar:
-    st.header("👤 用户中心 - VideoTaxi")
+    # 🎮 简洁的 Logo 区域
+    st.markdown("""
+    <div style="text-align: center; padding: 10px 0;">
+        <h2 style="margin: 0; color: #FF3131;">🚖 VideoTaxi</h2>
+        <p style="margin: 0; font-size: 12px; color: #8b949e;">认知刺客创作平台</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # 1. 简易登录框
+    st.divider()
+    
+    # 1. 用户登录（简化）
     if 'user_id' not in st.session_state:
         st.session_state.user_id = ""
     
-    user_id = st.text_input("👤 请输入用户名登录：", value=st.session_state.user_id, placeholder="直接输入即可自动创建", key="user_login")
+    user_id = st.text_input("👤 用户名", value=st.session_state.user_id, 
+                           placeholder="输入用户名", key="user_login")
     
     if user_id:
         st.session_state.user_id = user_id
-        # 获取用户信息
         user_info = get_or_create_user(user_id)
-        st.success(f"👋 欢迎, {user_id}！")
-        st.metric("📎 当前积分", user_info["credits"])
         
-        # 2. 签到按钮
-        if st.button("📅 每日签到领积分", use_container_width=True):
-            success, msg = check_in(user_id)
-            if success:
-                st.success(msg)
-                st.rerun()  # 刷新页面更新积分显示
-            else:
-                st.info(msg)
-        
-        st.divider()
+        # 简洁的用户信息展示
+        col_cred, col_btn = st.columns([1, 1])
+        with col_cred:
+            st.metric("💎 积分", user_info["credits"], label_visibility="collapsed")
+        with col_btn:
+            if st.button("📅 签到", use_container_width=True):
+                success, msg = check_in(user_id)
+                if success:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.info(msg)
     else:
-        st.warning("👈 请先输入用户名登录")
+        st.warning("👈 请先登录")
         st.stop()
     
-    # 🎨 主题切换
-    st.header("🎨 界面主题")
-    
-    # 初始化主题状态
-    if 'theme_mode' not in st.session_state:
-        st.session_state.theme_mode = 'dark'  # 默认深色模式
-    
-    # 主题切换按钮
-    theme_options = {
-        'dark': '🌙 深色模式',
-        'light': '☀️ 浅色模式'
-    }
-    
-    current_theme = st.session_state.theme_mode
-    next_theme = 'light' if current_theme == 'dark' else 'dark'
-    
-    if st.button(f"切换至 {theme_options[next_theme]}", use_container_width=True, key="theme_toggle"):
-        st.session_state.theme_mode = next_theme
-        st.rerun()
-    
-    st.caption(f"当前：{theme_options[current_theme]}")
     st.divider()
     
-    # 🛰️ 热点雷达 (Hotspot Radar)
-    st.header("📡 热点雷达 (Hotspot Radar)")
+    # 🛰️ 热点雷达（简化标题）
+    st.subheader("📡 热点雷达")
     
     # 初始化导航员
     if 'navigator' not in st.session_state:
@@ -768,31 +755,34 @@ with tab_script:
     # 🎬 Hero Section - 品牌视觉冲击
     hero_section()
     
-    col1, col2 = st.columns([1, 1.2])
+    # 使用标签页组织内容，减少混乱
+    script_tab1, script_tab2 = st.tabs(["🎯 快速创作", "⚙️ 高级设置"])
     
-    with col1:
-        st.subheader("📡 热点挖掘机")
-        if st.button("刷新抖音热点 🔄", help="实时获取抖音最新热搜榜单"):
-            with st.spinner("扫描中..."):
-                st.session_state.hot_topics = get_hot_topics(tianapi_key)
-                
-        # 优先使用从热点雷达锁定的主题
-        default_topic = st.session_state.get('selected_topic', '')
+    with script_tab1:
+        col1, col2 = st.columns([1, 1.2])
         
-        if st.session_state.hot_topics:
-            # 如果有热点列表，使用 selectbox
-            if default_topic and default_topic in st.session_state.hot_topics:
-                selected_index = st.session_state.hot_topics.index(default_topic)
-            else:
-                selected_index = 0
-            selected_topic = st.selectbox("📌 选择目标：", st.session_state.hot_topics, 
-                                         index=selected_index,
-                                         help="从热搜榜单中选择一个话题")
-        else:
-            st.info("👉 点击上方按钮获取热点，或从左侧「热点雷达」锁定任务")
-            selected_topic = st.text_input("或直接输入主题：", 
+        with col1:
+            st.subheader("📌 创作主题")
+            
+            # 优先使用从热点雷达锁定的主题
+            default_topic = st.session_state.get('selected_topic', '')
+            
+            # 简化的主题输入
+            selected_topic = st.text_input("输入视频主题：", 
                                           value=default_topic,
-                                          placeholder="例：内耗、裸辞、理财")
+                                          placeholder="例如：35岁程序员裸辞、职场内耗...",
+                                          help="可以直接输入，或从左侧热点雷达选择")
+            
+            if st.button("🔄 获取抖音热点", use_container_width=True):
+                with st.spinner("扫描中..."):
+                    st.session_state.hot_topics = get_hot_topics(tianapi_key)
+                    st.rerun()
+            
+            # 显示热点下拉（如果有）
+            if st.session_state.hot_topics:
+                selected_topic = st.selectbox("或选择热点：", 
+                                             [""] + st.session_state.hot_topics,
+                                             index=0)
         
         # 🎭 剧本生成风格选择（全新升级）
         # 优先使用从热点雷达锁定的风格
