@@ -166,15 +166,14 @@ def _render_creation_panel(
     with col1:
         st.subheader("📌 创作主题")
         
-        # 优先使用从热点雷达锁定的主题
+        # 主题输入
         default_topic = st.session_state.get('selected_topic', '')
         
-        # 简化的主题输入
         selected_topic = st.text_input(
             "输入视频主题：",
             value=default_topic,
             placeholder="例如：35岁程序员裸辞、职场内耗...",
-            help="可以直接输入，或从左侧热点雷达选择"
+            help="输入你想创作的视频主题，AI将自动生成剧本"
         )
         
         if st.button("🔄 获取抖音热点", use_container_width=True):
