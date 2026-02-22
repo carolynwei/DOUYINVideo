@@ -9,26 +9,73 @@ from chat_page import render_chat_page
 init_db()
 init_chat_db()  # 初始化聊天记录表
 
-st.set_page_config(page_title="AI 视觉视频引擎", page_icon="🎬", layout="wide")
+st.set_page_config(page_title="🥷 ASSASSIN AI - 认知刺客创作平台", page_icon="🥷", layout="wide")
 
-# 🎨 CSS 样式注入 - 提升高级感
-st.markdown("""
+# 🎨 CSS 样式注入 - 工业电影感 + SaaS 级交互
+def inject_custom_css():
+    st.markdown("""
     <style>
-    /* 让侧边栏更有层次感 */
-    [data-testid="stSidebar"] {
-        background-color: #f8f9fa;
+    /* 1. 隐藏默认的顶部红线和多余边距 */
+    header {visibility: hidden;}
+    .main .block-container {padding-top: 2rem;}
+
+    /* 2. 按钮悬浮发光效果 */
+    .stButton>button {
+        width: 100%;
+        border-radius: 5px;
+        border: 1px solid #FF3131;
+        background: transparent;
+        color: #FF3131;
+        font-weight: bold;
+        transition: all 0.3s ease;
     }
-    /* 美化主标题 */
-    .main-title {
-        font-size: 3rem;
-        font-weight: 800;
-        color: #FF0050; /* 抖音红 */
-        text-align: center;
-        margin-bottom: 2rem;
+    .stButton>button:hover {
+        background: #FF3131;
+        color: white;
+        box-shadow: 0 0 20px rgba(255, 49, 49, 0.4);
+        transform: translateY(-2px);
+    }
+
+    /* 3. 侧边栏卡片化 */
+    [data-testid="stSidebar"] {
+        border-right: 1px solid #30363d;
+        background-color: #0d1117;
+    }
+
+    /* 4. 聊天气泡专业化 */
+    [data-testid="stChatMessage"] {
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 1rem;
+        background-color: #0d1117;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* 5. 表格专业化 */
+    .stDataFrame {
+        border: 1px solid #30363d;
+        border-radius: 8px;
+    }
+    
+    /* 6. 输入框工业感 */
+    .stTextInput>div>div>input {
+        background-color: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 5px;
+        color: #E6EDF3;
+    }
+    
+    /* 7. Metric 卡片强化 */
+    [data-testid="stMetricValue"] {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #FF3131;
     }
     </style>
-    <h1 class="main-title">🎬 AI Video Engine</h1>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+
+# 执行 CSS 注入
+inject_custom_css()
 
 # 💡 快速上手指南（折叠式）
 with st.expander("💡 快速上手指南 (点此展开)"):

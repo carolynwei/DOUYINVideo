@@ -5,3 +5,10 @@ enableXsrfProtection = false
 
 [browser]
 gatherUsageStats = false
+
+[theme]
+primaryColor = "#FF3131"          # 刺客红：用于按钮、进度条
+backgroundColor = "#0A0A0B"       # 碳素黑：背景色
+secondaryBackgroundColor = "#161B22" # 深灰色：侧边栏、输入框背景
+textColor = "#E6EDF3"             # 陶瓷白：文字颜色
+font = "sans serif"
