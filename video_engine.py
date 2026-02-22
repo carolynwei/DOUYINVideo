@@ -242,8 +242,31 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
         if image_paths[i]:
             st.write(f"🖼️ 分镜 {i+1} 使用AI绘画: {image_paths[i]}")
             try:
-                bg = ImageClip(image_paths[i]).set_duration(dur).resize(height=1920).crop(x_center=1080/2, width=1080)
+                # 🔑 核心修复：用 Pillow 预处理图片，避免 MoviePy 的 resize 触发 ANTIALIAS
+                from PIL import Image as PILImage
+                img = PILImage.open(image_paths[i])
+                
+                # 计算缩放比例（目标高度 1920）
+                scale = 1920 / img.height
+                new_width = int(img.width * scale)
+                
+                # 使用 Pillow 的 LANCZOS 重采样（兼容新旧版本）
+                try:
+                    # Pillow >= 10.0.0
+                    img_resized = img.resize((new_width, 1920), PILImage.Resampling.LANCZOS)
+                except AttributeError:
+                    # Pillow < 10.0.0
+                    img_resized = img.resize((new_width, 1920), PILImage.LANCZOS)
+                
+                # 裁剪到 1080x1920（居中裁剪）
+                left = (new_width - 1080) // 2
+                img_cropped = img_resized.crop((left, 0, left + 1080, 1920))
+                
+                # 转为 numpy 数组，传给 MoviePy（不再调用 resize）
+                img_array = np.array(img_cropped)
+                bg = ImageClip(img_array).set_duration(dur)
                 temp_files.append(image_paths[i])
+                st.success(f"✅ 分镜 {i+1} 图片处理成功")
             except Exception as e:
                 st.error(f"❌ 分镜 {i+1} 图片加载失败: {e}，使用黑屏占位")
                 bg = ColorClip(size=(1080, 1920), color=(0, 0, 0)).set_duration(dur)
