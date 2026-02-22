@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from api_services import get_hot_topics, generate_script_json, generate_viral_script
+from api_services import get_hot_topics, generate_script_json, generate_viral_script, refine_script_data
 from video_engine import render_ai_video_pipeline
 
 st.set_page_config(page_title="AI 视觉视频引擎", page_icon="🎬", layout="wide")
@@ -102,6 +102,8 @@ with col2:
     st.subheader("✍️ 编导微调台")
     if st.session_state.scenes_data:
         st.caption("💡 提示：你可以双击单元格修改文案，或调整提示词以改变画风")
+        
+        # 必须将编辑后的数据存下来，这样精修时才能拿到用户手动改过的最新版本
         edited_scenes = st.data_editor(
             st.session_state.scenes_data,
             column_config={
@@ -113,25 +115,44 @@ with col2:
         )
         
         st.markdown("---")
-        if st.button("🚀 确认剧本，生成大片！", use_container_width=True, help="渲染过程约需 2-3 分钟"):
-            if not zhipu_api_key: st.error("请配置智谱 Key！")
-            else:
-                # 使用 st.status 展示实时进度
-                with st.status("🚀 视频引擎全力运转中...", expanded=True) as status:
-                    st.write("🎨 智谱 AI 正在绘制高清分镜...")
-                    st.write("🎙️ 微软神经网络正在合成配音...")
-                    st.write("🎬 MoviePy 正在进行像素压制...")
-                    
-                    video_file = "ai_b_roll_output.mp4"
-                    success = render_ai_video_pipeline(edited_scenes, zhipu_api_key, video_file, pexels_api_key)
-                    
-                    if success:
-                        status.update(label="🎉 视频生成成功！", state="complete", expanded=False)
-                        st.balloons()
-                        # 核心修复：正确读取本地文件
-                        with open(video_file, "rb") as file:
-                            video_bytes = file.read()
-                            st.video(video_bytes)
-                            st.download_button("⬇️ 下载成片", data=video_bytes, file_name=f"{selected_topic}.mp4", mime="video/mp4", help="下载生成的视频文件")
-                    else:
-                        status.update(label="❌ 生成失败", state="error")
+        
+        # 使用列布局，让"精修"和"渲染"按钮并排展示，提升UI体验
+        col_refine, col_render = st.columns(2)
+        
+        with col_refine:
+            if st.button("✨ 让大师精修剧本", use_container_width=True, help="清除废话，强化钩子，提升文案爆款率"):
+                if not llm_api_key: 
+                    st.error("请配置 DeepSeek Key")
+                else:
+                    with st.spinner("大师正在逐句毒舌批改中..."):
+                        # 把用户目前编辑在表格里的最新数据传给精修函数
+                        refined_data = refine_script_data(edited_scenes, llm_api_key)
+                        if refined_data:
+                            # 覆盖 session_state，并强制刷新页面重新渲染表格
+                            st.session_state.scenes_data = refined_data
+                            st.rerun() 
+                            
+        with col_render:
+            if st.button("🚀 确认剧本，生成大片！", type="primary", use_container_width=True, help="渲染过程约需 2-3 分钟"):
+                if not zhipu_api_key: st.error("请配置智谱 Key！")
+                else:
+                    # 使用 st.status 展示实时进度
+                    with st.status("🚀 视频引擎全力运转中...", expanded=True) as status:
+                        st.write("🎨 智谱 AI 正在绘制高清分镜...")
+                        st.write("🎙️ 微软神经网络正在合成配音...")
+                        st.write("🎬 MoviePy 正在进行像素压制...")
+                        
+                        video_file = "ai_b_roll_output.mp4"
+                        # 注意这里传入的是 edited_scenes，确保渲染的是表格里最新的内容
+                        success = render_ai_video_pipeline(edited_scenes, zhipu_api_key, video_file, pexels_api_key)
+                        
+                        if success:
+                            status.update(label="🎉 视频生成成功！", state="complete", expanded=False)
+                            st.balloons()
+                            # 核心修复：正确读取本地文件
+                            with open(video_file, "rb") as file:
+                                video_bytes = file.read()
+                                st.video(video_bytes)
+                                st.download_button("⬇️ 下载成片", data=video_bytes, file_name=f"{selected_topic}.mp4", mime="video/mp4", help="下载生成的视频文件")
+                        else:
+                            status.update(label="❌ 生成失败", state="error")

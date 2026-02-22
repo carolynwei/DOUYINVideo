@@ -170,3 +170,48 @@ def get_pexels_videos(query, api_key, required_duration):
     except Exception as e:
         print(f"Pexels素材获取失败：{e}")
         return []
+
+def refine_script_data(current_scenes, api_key):
+    """✨ 调用大师进行二次精修，挑刺并提升文案能量密度"""
+    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1".strip())
+    
+    # 将当前的剧本转换为 JSON 字符串喂给 AI
+    current_json_str = json.dumps(current_scenes, ensure_ascii=False)
+    
+    refine_system_prompt = """你是全网最毒舌、最懂人性的短视频内容总监。你深谙"认知刺客"爆款法则。
+你的任务是：无情地审查并精修用户提交的分镜剧本，提升其成为爆款的概率。
+
+【你的毒舌审查清单与修改规则】：
+1. 黄金3秒Hook检查：第一句如果平淡无奇，立刻把它改成带有强冲突、强悬念、反常识的爆点金句！
+2. 废话大扫除：把所有的"那么、其实、众所周知、接下来"等连接词全部删掉！一句废话都不要留。
+3. 软弱词汇升维：把所有的形容词（很生气、很快、很好）改成具体、有冲击力的动词和名词搭配（如：把手机砸烂、推背感、吊打同行）。
+4. 钩子密度检查：确保每段文案都有情绪起伏，如果没有，强行加入反问或预告。
+5. 画面张力提升：检查 image_prompt 是否足够有表现力，适当增加大师级摄影风格（如：Sam Kolder style, cinematic lighting, extreme close-up）以增强画面质感。
+
+【强制输出格式】
+直接输出修改后的纯 JSON 数组，保持原有结构不变，绝对不要输出任何 markdown 符号（如 ```json）和解释性文字：
+[{"narration": "精修后的刺客文案", "image_prompt": "精修后的画面提示词"}]"""
+
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": refine_system_prompt},
+                {"role": "user", "content": f"请立刻毒舌批改并重写以下剧本，直接返回精修后的 JSON 数组：\n\n{current_json_str}"}
+            ],
+            temperature=0.6, # 精修模式下降低一点温度，保证结构稳定和修改的精准度
+            response_format={'type': 'json_object'}
+        )
+        
+        content = response.choices[0].message.content
+        clean_content = re.sub(r'```json\n|\n```|```', '', content).strip()
+        refined_scenes = json.loads(clean_content)
+        
+        if isinstance(refined_scenes, dict):
+            for v in refined_scenes.values():
+                if isinstance(v, list): return v
+        return refined_scenes if isinstance(refined_scenes, list) else []
+        
+    except Exception as e:
+        st.error(f"大师精修失败: {e}")
+        return []
