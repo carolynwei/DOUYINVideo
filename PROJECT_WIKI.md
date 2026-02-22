@@ -12,8 +12,37 @@
 | **核心定位** | AI驱动的全自动短视频生成工具 |
 | **目标平台** | 抖音（竖屏 9:16，1080x1920） |
 | **技术栈** | Python + Streamlit + DeepSeek + 智谱AI + 火山引擎 |
-| **部署方式** | 本地运行 / Streamlit Cloud |
+| **部署方式** | 本地运行 / Streamlit Cloud / VPS |
 | **当前版本** | v3.0.0 (2026-02-22) |
+| **仓库地址** | https://github.com/carolynwei/DOUYINVideo |
+
+---
+
+## 🎯 快速开始
+
+### 5分钟启动指南
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/carolynwei/DOUYINVideo.git
+cd DOUYINVideo
+
+# 2. 创建并激活 conda 环境
+conda create -n douyin-video-env python=3.9
+conda activate douyin-video-env
+
+# 3. 安装依赖
+pip install -r requirements.txt
+
+# 4. 配置 API 密钥
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+# 编辑 secrets.toml，填入你的 API Keys
+
+# 5. 运行
+streamlit run app.py
+```
+
+浏览器将自动打开 `http://localhost:8501`
 
 ---
 
@@ -292,33 +321,136 @@ app.py
 
 ## 🚀 部署指南
 
-### 本地开发
+### 方案一：本地开发
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/your-username/douyinVideo.git
-cd douyinVideo
+git clone https://github.com/carolynwei/DOUYINVideo.git
+cd DOUYINVideo
 
-# 2. 安装依赖
+# 2. 创建 conda 环境
+conda create -n douyin-video-env python=3.9
+conda activate douyin-video-env
+
+# 3. 安装依赖
 pip install -r requirements.txt
 
-# 3. 配置密钥 (创建 .streamlit/secrets.toml)
-echo '[secrets]
-DEEPSEEK_KEY = "sk-your-key"
-ZHIPU_KEY = "your-key"
-TIANAPI_KEY = "your-key"' > .streamlit/secrets.toml
+# 4. 配置密钥
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+# 编辑 .streamlit/secrets.toml，填入你的 API Keys
 
-# 4. 运行
+# 5. 运行
 streamlit run app.py
 ```
 
-### Streamlit Cloud 部署
+### 方案二：Streamlit Cloud 部署（推荐新手）
 
-1. Fork 本仓库到 GitHub
-2. 登录 [share.streamlit.io](https://share.streamlit.io)
-3. 创建新应用，选择本仓库
-4. 在 Settings → Secrets 中配置 API Keys
-5. 点击 Deploy
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────────┐
+│   GitHub    │────→│ Streamlit   │────→│   云端应用       │
+│   仓库      │     │   Cloud     │     │   (自动部署)     │
+└─────────────┘     └─────────────┘     └─────────────────┘
+       │                                           │
+       │         1. Fork 仓库到个人账号              │
+       │         2. 登录 share.streamlit.io         │
+       │         3. 创建 New app                     │
+       │         4. 选择 GitHub 仓库                 │
+       │         5. 配置 Secrets                     │
+       │         6. Deploy                           │
+       │                                           │
+       └────────→ 推送代码自动触发重新部署 ←─────────┘
+```
+
+**详细步骤：**
+
+1. **Fork 仓库**
+   - 访问 https://github.com/carolynwei/DOUYINVideo
+   - 点击右上角 Fork 按钮
+
+2. **登录 Streamlit Cloud**
+   - 访问 https://share.streamlit.io
+   - 使用 GitHub 账号登录
+
+3. **创建应用**
+   - 点击 "New app"
+   - Repository: 选择你的 Fork
+   - Branch: `master`
+   - Main file path: `app.py`
+
+4. **配置 Secrets（必需）**
+   ```toml
+   DEEPSEEK_KEY = "sk-your-deepseek-key"
+   ZHIPU_KEY = "your-zhipu-key"
+   TIANAPI_KEY = "your-tianapi-key"
+   PEXELS_KEY = "your-pexels-key"  # 可选
+   VOLC_APPID = "your-volc-appid"  # 可选
+   VOLC_ACCESS_TOKEN = "your-volc-token"  # 可选
+   ```
+
+5. **点击 Deploy**
+   - 等待 2-3 分钟构建完成
+   - 获得专属 URL: `https://your-app-name.streamlit.app`
+
+### 方案三：VPS 服务器部署（7x24无人值守）
+
+适用于需要真正"无人值守"定时调度的场景。
+
+```bash
+# 1. 连接服务器
+ssh root@your-server-ip
+
+# 2. 安装依赖
+apt-get update
+apt-get install -y python3-pip ffmpeg git
+
+# 3. 克隆仓库
+git clone https://github.com/carolynwei/DOUYINVideo.git
+cd DOUYINVideo
+
+# 4. 安装 Python 依赖
+pip3 install -r requirements.txt
+
+# 5. 配置环境变量
+export DEEPSEEK_KEY="your-key"
+export ZHIPU_KEY="your-key"
+export TIANAPI_KEY="your-key"
+
+# 6. 启动定时调度（后台运行）
+nohup python3 run_scheduler.py --time 04:00 --num 2 > scheduler.log 2>&1 &
+
+# 7. 查看日志
+tail -f scheduler.log
+```
+
+**使用 systemd 守护进程（推荐）：**
+
+创建服务文件 `/etc/systemd/system/videotaxi.service`:
+```ini
+[Unit]
+Description=VideoTaxi Scheduler
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/DOUYINVideo
+Environment=DEEPSEEK_KEY=your-key
+Environment=ZHIPU_KEY=your-key
+Environment=TIANAPI_KEY=your-key
+ExecStart=/usr/bin/python3 run_scheduler.py --time 04:00 --num 2
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+启动服务：
+```bash
+systemctl enable videotaxi
+systemctl start videotaxi
+systemctl status videotaxi
+```
 
 ---
 
@@ -408,26 +540,413 @@ st.session_state.model_id            # 选中的模型ID
 
 ---
 
+## 📚 API 文档
+
+### api_services.py
+
+#### `get_hot_topics(api_key: str) -> List[str]`
+获取抖音热搜榜单。
+
+**参数：**
+- `api_key`: 天行数据 API Key
+
+**返回：**
+- 热搜关键词列表（前10条）
+
+**示例：**
+```python
+from api_services import get_hot_topics
+topics = get_hot_topics("your-tianapi-key")
+# ['35岁程序员裸辞', '为什么年轻人不买房', ...]
+```
+
+---
+
+#### `generate_script_by_style(topic: str, style: str, api_key: str, auto_image_prompt: bool = True) -> List[Dict]`
+根据风格生成剧本（VideoTaxi FSD 2.0 核心函数）。
+
+**参数：**
+- `topic`: 主题词
+- `style`: 风格名称（5种可选）
+  - `🗡️ 认知刺客流（冲击力+优越感）`
+  - `👍 听勝/养成系（互动率04+评论爆炸）`
+  - `🎬 POV沉浸流（第一人称+代入感）`
+  - `🔥 情绪宣泄流（极致反转+发疯文学）`
+  - `🐱 Meme抗象流（低成本+病毒传播）`
+- `api_key`: DeepSeek API Key
+- `auto_image_prompt`: 是否自动生成画面提示词
+
+**返回：**
+```python
+[
+    {
+        "narration": "口播文案（含SSML标签）",
+        "image_prompt": "英文画面提示词",
+        "emotion_vibe": "cold_question",
+        "sfx_label": "[Impact]"
+    },
+    ...
+]
+```
+
+**示例：**
+```python
+from api_services import generate_script_by_style
+
+scenes = generate_script_by_style(
+    topic="35岁程序员裸辞",
+    style="🗡️ 认知刺客流（冲击力+优越感）",
+    api_key="sk-your-key",
+    auto_image_prompt=True
+)
+```
+
+---
+
+#### `generate_images_zhipu(scenes_data: List[Dict], api_key: str) -> List[str]`
+调用智谱 CogView-3-Plus 生成图片。
+
+**参数：**
+- `scenes_data`: 剧本数据（含 image_prompt）
+- `api_key`: 智谱 API Key
+
+**返回：**
+- 生成的图片文件路径列表
+
+---
+
+#### `refine_script_by_chat(current_scenes: List[Dict], user_request: str, api_key: str) -> List[Dict]`
+对话式剧本微调。
+
+**参数：**
+- `current_scenes`: 当前剧本
+- `user_request`: 用户修改需求（如"加点反转"）
+- `api_key`: DeepSeek API Key
+
+**示例：**
+```python
+refined = refine_script_by_chat(
+    current_scenes=scenes,
+    user_request="第二段太平淡了，加点反转",
+    api_key="sk-your-key"
+)
+```
+
+---
+
+### video_engine.py
+
+#### `render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=None, voice_id="zh-CN-YunxiNeural", style_name=None) -> bool`
+核心视频渲染管线。
+
+**参数：**
+- `scenes_data`: 剧本数据列表
+- `zhipu_key`: 智谱 API Key
+- `output_path`: 输出视频路径（如 `"output.mp4"`）
+- `pexels_key`: Pexels API Key（可选，用于真实素材兜底）
+- `voice_id`: 配音音色 ID
+  - Edge TTS: `zh-CN-YunxiNeural`, `zh-CN-XiaoxiaoNeural`
+  - 火山引擎: `volc_zh_male_jingqiangkanye_moon_bigtts`
+- `style_name`: 风格名称（用于匹配BGM）
+
+**返回：**
+- `True`: 渲染成功
+- `False`: 渲染失败
+
+**示例：**
+```python
+from video_engine import render_ai_video_pipeline
+
+success = render_ai_video_pipeline(
+    scenes_data=scenes,
+    zhipu_key="your-zhipu-key",
+    output_path="video.mp4",
+    voice_id="zh-CN-YunxiNeural",
+    style_name="🗡️ 认知刺客流（冲击力+优越感）"
+)
+```
+
+---
+
+### tianapi_navigator.py
+
+#### `TianapiNavigator(api_key: str)`
+热点导航员类。
+
+**方法：**
+
+##### `fetch_today_missions(num: int = 5) -> List[Dict]`
+获取今日热点任务清单。
+
+**返回：**
+```python
+[
+    {
+        "topic": "35岁程序员裸辞",
+        "hot_value": 9800000,
+        "heat_level": "🔥🔥🔥 爆款",
+        "recommended_style": "🗡️ 认知刺客流（冲击力+优越感）",
+        "description": "当前抖音热度：9,800,000"
+    },
+    ...
+]
+```
+
+##### `expand_topic_context(topic: str, api_key: str) -> Dict`
+热点背景扩充器。
+
+**返回：**
+```python
+{
+    "success": True,
+    "topic": "35岁程序员裸辞",
+    "expansion": {
+        "emotion_mother": "焦虑与自我怀疑",
+        "pain_points": ["职业天花板", "年龄歧视", "收入不稳定"],
+        "target_audience": "25-35岁职场人",
+        "content_angles": ["转型经验", "心理准备", "经济规划"],
+        "controversy_potential": "8/10"
+    }
+}
+```
+
+---
+
+#### `auto_pilot_generate(navigator, deepseek_key, zhipu_key, pexels_key, voice_id, num_missions) -> List[Dict]`
+全自动发车函数。
+
+**示例：**
+```python
+from tianapi_navigator import TianapiNavigator, auto_pilot_generate
+
+navigator = TianapiNavigator("your-tianapi-key")
+results = auto_pilot_generate(
+    navigator=navigator,
+    deepseek_key="sk-your-key",
+    zhipu_key="your-zhipu-key",
+    pexels_key="your-pexels-key",
+    voice_id="zh-CN-YunxiNeural",
+    num_missions=3
+)
+```
+
+---
+
+### scheduler_tower.py
+
+#### `SchedulerTower(tianapi_key, deepseek_key, zhipu_key, pexels_key="", output_dir="./output")`
+调度塔台类（7x24小时无人值守）。
+
+**方法：**
+
+##### `auto_drive_mission(num_videos: int = 1) -> List[Dict]`
+执行一次自动驾驶任务。
+
+##### `schedule_daily_run(run_time: str = "04:00", num_videos: int = 1)`
+设置每日定时运行。
+
+##### `run_scheduler()`
+启动调度器（阻塞式，用于本地/VPS）。
+
+---
+
+#### `start_background_scheduler(tianapi_key, deepseek_key, zhipu_key, pexels_key, run_time, num_videos) -> bool`
+Streamlit Cloud 后台调度启动器（非阻塞）。
+
+**示例：**
+```python
+from scheduler_tower import start_background_scheduler, get_scheduler_status
+
+# 启动后台调度
+start_background_scheduler(
+    tianapi_key=st.secrets["TIANAPI_KEY"],
+    deepseek_key=st.secrets["DEEPSEEK_KEY"],
+    zhipu_key=st.secrets["ZHIPU_KEY"],
+    run_time="04:00",
+    num_videos=1
+)
+
+# 获取状态
+status = get_scheduler_status()
+st.write(f"下次发车: {status['next_run']}")
+```
+
+---
+
+### db_manager.py
+
+#### `get_or_create_user(user_id: str) -> Dict`
+获取或创建用户。
+
+**返回：**
+```python
+{
+    "user_id": "username",
+    "credits": 20,
+    "last_login_date": "2026-02-22",
+    "consecutive_days": 1
+}
+```
+
+#### `check_in(user_id: str) -> Tuple[bool, str]`
+每日签到。
+
+**返回：**
+```python
+(True, "签到成功！连续 3 天，获得 8 积分。当前总积分: 45")
+```
+
+#### `deduct_credits(user_id: str, cost: int) -> bool`
+扣除积分。
+
+#### `save_message(user_id: str, role: str, content: str)`
+保存聊天记录。
+
+#### `load_messages(user_id: str) -> List[Dict]`
+加载聊天记录。
+
+---
+
 ## 🐛 常见问题排查
+
+### 部署问题
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| `ModuleNotFoundError: No module named 'schedule'` | 依赖未安装 | 确保 `requirements.txt` 包含 `schedule>=1.2.0` |
+| Streamlit Cloud 构建失败 | 系统依赖缺失 | 检查 `packages.txt` 是否包含 `fonts-noto-cjk` |
+| 视频生成失败 | ImageMagick/FFmpeg 缺失 | Linux: 已自动安装；Windows: 手动安装 ImageMagick |
+
+### 运行时问题
 
 | 问题 | 原因 | 解决方案 |
 |------|------|----------|
 | 字幕乱码 | 字体文件缺失 | 确保 `assets/font.ttf` 存在 |
-| 视频生成失败 | ImageMagick未安装 | Windows手动安装，Linux自动安装 |
-| 音频生成失败 | 网络问题 | 检查网络，查看详细错误日志 |
+| 音频生成失败 | 网络问题/TTS 服务异常 | 检查网络，查看详细错误日志 |
+| 图片生成失败 | 智谱 API 额度不足 | 检查智谱控制台余额 |
 | 积分不足 | 余额不够 | 每日签到或切换低消耗模型 |
 | BGM无法播放 | 文件缺失 | 确保 `assets/bgm.mp3` 存在 |
+
+### API 问题
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| `401 Unauthorized` | API Key 错误 | 检查 Secrets 配置 |
+| `429 Too Many Requests` | 请求频率过高 | 降低调用频率，或升级套餐 |
+| `500 Internal Server Error` | 服务商故障 | 稍后重试 |
+
+### 调度问题
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| Streamlit Cloud 定时任务不执行 | 服务器休眠 | 使用 UptimeRobot 定时 Ping，或部署到 VPS |
+| 后台线程停止 | 页面关闭 | Streamlit Cloud 限制，需使用 VPS 实现真·7x24 |
+
+---
+
+## 🏗️ 架构设计原理
+
+### 工作流状态机
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     渐进式工作流状态机                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   ┌─────────┐    ┌─────────┐    ┌──────────┐    ┌─────────┐│
+│   │  draft  │───→│ locked  │───→│producing │───→│completed││
+│   │  草稿   │    │  锁定   │    │  生产中   │    │  完成   ││
+│   └────┬────┘    └────┬────┘    └────┬─────┘    └────┬────┘│
+│        │              │              │               │     │
+│        │ 可编辑       │ 不可编辑     │ 渲染中        │ 可下载│
+│        │ 可微调       │ 可解锁       │ 进度显示      │ 可重置│
+│        │              │              │               │     │
+│        └──────────────┘              │               │     │
+│           锁定剧本                     │               │     │
+│                                        │               │     │
+│        ┌───────────────────────────────┘               │     │
+│        │ 一键生产                                       │     │
+│        │                                               │     │
+│        └───────────────────────────────────────────────┘     │
+│                      创作下一个视频                            │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 视频渲染流水线
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   输入剧本   │───→│  AI生成图片  │───→│  TTS合成音频 │───→│  MoviePy渲染 │
+│  scenes_data│    │  1024x1920  │    │   MP3格式   │    │  1080x1920  │
+└─────────────┘    └─────────────┘    └─────────────┘    └──────┬──────┘
+                                                                │
+┌────────────────────────────────────────────────────────────────┘
+│
+▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  添加字幕   │───→│  混入BGM    │───→│  输出MP4    │
+│ Pillow绘制  │    │ 风格化音量  │    │ H.264编码   │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+### 数据流向图
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         用户交互层                               │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
+│  │ 热点选择  │  │ 剧本生成  │  │ 精修微调  │  │ 视频渲染  │        │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘        │
+└───────┼─────────────┼─────────────┼─────────────┼────────────────┘
+        │             │             │             │
+        ▼             ▼             ▼             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                         业务逻辑层                               │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │              api_services.py (AI服务层)                  │   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐│   │
+│  │  │DeepSeek  │  │ 智谱AI   │  │ 天行数据  │  │ 大师精修  ││   │
+│  │  │剧本生成  │  │ 图片生成  │  │ 热点获取  │  │ 对话微调  ││   │
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘│   │
+│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │              video_engine.py (渲染引擎)                  │   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐│   │
+│  │  │ Edge TTS │  │火山引擎  │  │ MoviePy  │  │ Pillow   ││   │
+│  │  │语音合成  │  │高阶TTS   │  │ 视频合成  │  │ 字幕绘制  ││   │
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘│   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+        │             │             │             │
+        ▼             ▼             ▼             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                         数据持久层                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
+│  │  SQLite     │  │  本地文件   │  │  云端存储   │             │
+│  │ 用户/积分   │  │ 视频/图片   │  │ (待实现)    │             │
+│  └─────────────┘  └─────────────┘  └─────────────┘             │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## 📝 待办事项 (TODO)
 
+### 高优先级
 - [ ] 视频发布对接 (抖音API)
-- [ ] 历史资产页面完善
-- [ ] 多语言支持
+- [ ] 历史资产页面完善（视频管理、重新编辑）
+- [ ] GitHub Actions 定时任务（真·7x24无人值守）
+
+### 中优先级
+- [ ] 多语言支持（英文界面）
 - [ ] 移动端适配优化
-- [ ] A/B测试框架
-- [ ] 实时协作功能
+- [ ] A/B测试框架（不同风格效果对比）
+
+### 低优先级
+- [ ] 实时协作功能（多人同时编辑）
+- [ ] 数据分析仪表盘（播放量、完播率统计）
+- [ ] 自定义字体上传
 
 ---
 
