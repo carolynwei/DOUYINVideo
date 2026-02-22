@@ -2,11 +2,12 @@ import streamlit as st
 import os
 from api_services import get_hot_topics, generate_script_json, generate_viral_script, refine_script_data
 from video_engine import render_ai_video_pipeline
-from db_manager import init_db, get_or_create_user, check_in, deduct_credits, get_user_credits
+from db_manager import init_db, get_or_create_user, check_in, deduct_credits, get_user_credits, init_chat_db
 from chat_page import render_chat_page
 
 # 启动时初始化数据库
 init_db()
+init_chat_db()  # 初始化聊天记录表
 
 st.set_page_config(page_title="AI 视觉视频引擎", page_icon="🎬", layout="wide")
 

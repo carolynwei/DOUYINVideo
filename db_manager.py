@@ -4,7 +4,7 @@
 """
 
 import sqlite3
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 DB_FILE = "app_data.db"
 
@@ -94,3 +94,50 @@ def get_user_credits(user_id):
     """获取用户当前积分"""
     user = get_or_create_user(user_id)
     return user["credits"]
+
+# ==================== 聊天记录持久化功能 ====================
+
+def init_chat_db():
+    """初始化聊天记录表"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    # 建立 chat_history 表，记录是谁说的、角色是什么、内容是什么、什么时候说的
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS chat_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            role TEXT,
+            content TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def save_message(user_id, role, content):
+    """保存单条聊天记录到数据库"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)", 
+              (user_id, role, content))
+    conn.commit()
+    conn.close()
+
+def load_messages(user_id):
+    """加载某个用户的所有历史聊天记录"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT role, content FROM chat_history WHERE user_id=? ORDER BY id ASC", (user_id,))
+    rows = c.fetchall()
+    conn.close()
+    
+    # 将查出来的数据转成 Streamlit 和大模型都能直接用的字典格式
+    return [{"role": row[0], "content": row[1]} for row in rows]
+
+def clear_messages(user_id):
+    """清空某个用户的聊天记录"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("DELETE FROM chat_history WHERE user_id=?", (user_id,))
+    conn.commit()
+    conn.close()
