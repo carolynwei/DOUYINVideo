@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-ASSASSIN AI - 认知刺客创作平台
+VideoTaxi (VibeDrive) - 认知刺客创作平台
+开你的 VideoTaxi，在抖音公路上自由驰骋
 确保所有中文字符正确显示
 """
 
@@ -15,7 +16,7 @@ from chat_page import render_chat_page
 init_db()
 init_chat_db()  # 初始化聊天记录表
 
-st.set_page_config(page_title="🥷 ASSASSIN AI - 认知刺客创作平台", page_icon="🥷", layout="wide")
+st.set_page_config(page_title="🚖 VideoTaxi - 认知刺客创作平台", page_icon="🚖", layout="wide")
 
 # 🎨 CSS 样式注入 - 工业电影感 + SaaS 级交互 + 主题切换
 def inject_custom_css(theme='dark'):
@@ -346,6 +347,133 @@ with st.expander("💡 快速上手指南 (点此展开)"):
 if 'hot_topics' not in st.session_state: st.session_state.hot_topics = []
 if 'scenes_data' not in st.session_state: st.session_state.scenes_data = []
 
+# 🎬 Hero Section - VideoTaxi 品牌视觉
+def hero_section():
+    """
+    VideoTaxi 首屏 Hero Section
+    浪漫主义 + 暴力美学：深色磨砂玻璃 + 霓虹灯流光感 + 动态跑单状态
+    """
+    st.markdown("""
+    <style>
+    .hero-container {
+        background: linear-gradient(135deg, #0e1117 0%, #161b22 100%);
+        padding: 3.5rem 2rem;
+        border-radius: 15px;
+        border: 1px solid #30363d;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        position: relative;
+        overflow: hidden;
+    }
+    .hero-container::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 49, 49, 0.05) 0%, transparent 70%);
+        animation: pulse 4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    .main-title {
+        font-size: 3.2rem;
+        font-weight: 800;
+        letter-spacing: -2px;
+        color: #ffffff;
+        margin-bottom: 0.8rem;
+        position: relative;
+        z-index: 1;
+    }
+    .highlight {
+        color: #FF3131;
+        text-shadow: 0 0 20px rgba(255, 49, 49, 0.6), 0 0 40px rgba(255, 49, 49, 0.3);
+        font-weight: 900;
+    }
+    .sub-title {
+        font-size: 1.15rem;
+        color: #8b949e;
+        font-family: 'SF Mono', 'Courier New', Courier, monospace;
+        margin-bottom: 1.2rem;
+        position: relative;
+        z-index: 1;
+    }
+    .running-tag {
+        display: inline-block;
+        background: rgba(46, 160, 67, 0.15);
+        color: #3fb950;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        border: 1px solid #238636;
+        margin-top: 0.5rem;
+        position: relative;
+        z-index: 1;
+        animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    .running-tag::before {
+        content: '●';
+        margin-right: 6px;
+        animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+    </style>
+    
+    <div class="hero-container">
+        <div class="main-title">开你的 <span class="highlight">VideoTaxi</span></div>
+        <div class="sub-title">在抖音公路上自由驰骋</div>
+        <div class="running-tag">流量正在 7x24 小时为你跑单</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# 🔍 SSML 质量检查器
+def check_ssml_quality(scenes_data):
+    """
+    检查剧本中的 SSML 情绪标注质量
+    返回：(total_scenes, ssml_count, hook_has_ssml, warnings)
+    """
+    import re
+    
+    total_scenes = len(scenes_data)
+    ssml_count = 0
+    hook_has_ssml = False
+    warnings = []
+    
+    for i, scene in enumerate(scenes_data):
+        narration = scene.get('narration', '')
+        
+        # 检查是否包含 <prosody> 标签
+        if '<prosody' in narration:
+            ssml_count += 1
+            
+            # 检查 SSML 语法是否完整
+            prosody_tags = re.findall(r'<prosody[^>]*>(.*?)</prosody>', narration, re.DOTALL)
+            if not prosody_tags:
+                warnings.append(f"⚠️ 分镜 {i+1}: SSML 标签未闭合")
+            
+            # 检查 Hook（前3秒，即第1个分镜）
+            if i == 0:
+                hook_has_ssml = True
+        else:
+            warnings.append(f"⚠️ 分镜 {i+1}: 缺少 SSML 情绪标注")
+    
+    # Hook 检查
+    if not hook_has_ssml and total_scenes > 0:
+        warnings.insert(0, "⚠️ 关键问题：Hook（第1个分镜）缺少 SSML 标注！")
+    
+    return total_scenes, ssml_count, hook_has_ssml, warnings
+
 # 🎯 渐进式工作流状态管理
 if 'script_versions' not in st.session_state: st.session_state.script_versions = []  # 版本历史
 if 'current_version_index' not in st.session_state: st.session_state.current_version_index = -1  # -1表示无版本
@@ -354,7 +482,7 @@ if 'chat_history' not in st.session_state: st.session_state.chat_history = []  #
 if 'voice_id' not in st.session_state: st.session_state.voice_id = "zh-CN-YunxiNeural"
 
 with st.sidebar:
-    st.header("👤 用户中心")
+    st.header("👤 用户中心 - VideoTaxi")
     
     # 1. 简易登录框
     if 'user_id' not in st.session_state:
@@ -519,6 +647,9 @@ tab_script, tab_video, tab_assets = st.tabs(["🔥 剧本构思", "🎬 影像�
 
 # ==================== Tab 1: 剧本构思 ====================
 with tab_script:
+    # 🎬 Hero Section - 品牌视觉冲击
+    hero_section()
+    
     col1, col2 = st.columns([1, 1.2])
     
     with col1:
@@ -720,6 +851,44 @@ with tab_script:
             # 这样删除、新增行的操作才能生效
             if not is_locked and edited_scenes != st.session_state.scenes_data:
                 st.session_state.scenes_data = edited_scenes
+                
+            st.markdown("---")
+            
+            # 🔍 SSML 质量检查器（仅在 draft 状态下显示）
+            if st.session_state.workflow_state == 'draft' and st.session_state.scenes_data:
+                with st.expander("🔍 TTS 情绪标注质量检查", expanded=False):
+                    st.caption("💡 检查剧本中的 SSML 情绪标签，确保语音合成具备情绪表现力")
+                    
+                    if st.button("🔍 开始检查", use_container_width=True):
+                        total, ssml_count, hook_ok, warns = check_ssml_quality(st.session_state.scenes_data)
+                        
+                        # 显示总体评分
+                        col_a, col_b, col_c = st.columns(3)
+                        col_a.metric("🎬 总分镜数", total)
+                        col_b.metric("🎵 SSML 标注", f"{ssml_count}/{total}")
+                        
+                        coverage = int((ssml_count / total * 100)) if total > 0 else 0
+                        if coverage >= 80:
+                            col_c.metric("🎯 覆盖率", f"{coverage}%", delta="优秀", delta_color="normal")
+                        elif coverage >= 50:
+                            col_c.metric("🎯 覆盖率", f"{coverage}%", delta="良好", delta_color="normal")
+                        else:
+                            col_c.metric("🎯 覆盖率", f"{coverage}%", delta="需改进", delta_color="inverse")
+                        
+                        # Hook 检查
+                        if hook_ok:
+                            st.success("✅ Hook（第1个分镜）已标注 SSML 情绪")
+                        else:
+                            st.error("❌ 关键问题：Hook 缺少 SSML 标注！")
+                        
+                        # 警告列表
+                        if warns:
+                            st.warning("⚠️ **检查结果**")
+                            for warn in warns:
+                                st.write(warn)
+                        else:
+                            st.balloons()
+                            st.success("🎉 完美！所有分镜都包含 SSML 情绪标注！")
                 
             st.markdown("---")
                 
