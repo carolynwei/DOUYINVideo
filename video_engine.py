@@ -1131,7 +1131,9 @@ def generate_all_audios_sync(scenes_data, voice_id="zh-CN-YunxiNeural"):
     
     return audio_files
 
-def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=None, voice_id="zh-CN-YunxiNeural", style_name=None):
+def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=None, 
+                              voice_id="zh-CN-YunxiNeural", style_name=None, 
+                              use_video_model=False):
     """核心视频渲染管线
     
     Args:
@@ -1141,11 +1143,15 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
         pexels_key: Pexels API Key
         voice_id: 声音 ID
         style_name: 风格名称（用于匹配 BGM）
+        use_video_model: 是否使用 CogVideoX-3 视频生成模型（默认False使用图片）
     """
     from api_services import generate_images_zhipu
     
     # 1. 资源生成
-    image_paths = generate_images_zhipu(scenes_data, zhipu_key)
+    media_type = "视频" if use_video_model else "图片"
+    st.info(f"🎬 使用智谱 {'CogVideoX-3' if use_video_model else 'CogView-3-Plus'} 生成{media_type}...")
+    
+    image_paths = generate_images_zhipu(scenes_data, zhipu_key, use_video_model=use_video_model)
     audio_files = generate_all_audios_sync(scenes_data, voice_id)  # 传递 voice_id
     
     # 🔍 调试信息：显示成功生成的图片数量

@@ -592,8 +592,17 @@ def _render_producing_actions(
         
         st.markdown("---")
         
-        st.markdown("**🎨 画面风格**")
-        st.info("根据剧本中的 image_prompt 自动绘制")
+        st.markdown("**🎨 AI 生成模式**")
+        use_video_model = st.toggle(
+            "使用 CogVideoX-3 视频生成（实验性）",
+            value=st.session_state.get('use_video_model', False),
+            help="开启后将使用智谱视频生成模型，生成动态视频而非静态图片"
+        )
+        st.session_state.use_video_model = use_video_model
+        if use_video_model:
+            st.info("🎬 将生成动态视频片段（实验性功能，可能需要更长时间）")
+        else:
+            st.info("🖼️ 将生成静态图片（默认，更快更稳定）")
     
     # 视频生成进度
     with st.status("🚀 视频引擎全力运转中...", expanded=True) as status:
@@ -608,13 +617,16 @@ def _render_producing_actions(
         st.write("🎬 MoviePy 正在进行像素压制...")
         
         video_file = "ai_b_roll_output.mp4"
+        use_video_model = st.session_state.get('use_video_model', False)
+        
         success = render_ai_video_pipeline_func(
             edited_scenes,
             zhipu_api_key,
             video_file,
             pexels_api_key,
             voice_id=st.session_state.voice_id,
-            style_name=st.session_state.get('script_mode')
+            style_name=st.session_state.get('script_mode'),
+            use_video_model=use_video_model
         )
         
         if success:

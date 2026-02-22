@@ -565,18 +565,33 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
         st.error(f"{style} 剧本生成失败: {e}")
         return []
 
-def generate_images_zhipu(scenes_data, api_key, style_config=None):
+def generate_images_zhipu(scenes_data, api_key, style_config=None, use_video_model=False):
     """
-    🎬 调用智谱 CogView-3-Plus - VideoTaxi Cinematography v3.0 导演定焦版
+    🎬 调用智谱 AI - VideoTaxi Cinematography v3.0 导演定焦版
+    
+    支持两种模式：
+    1. CogView-3-Plus: 图片生成（默认）
+    2. CogVideoX-3: 视频生成（当 use_video_model=True）
     
     核心升级：
     1. 使用 build_master_image_prompt 构建电影级 Prompt
     2. 视觉锚点确保人物一致性
     3. 强制镜头语言、光影、风格滤镜
     """
-    url = "https://open.bigmodel.cn/api/paas/v4/images/generations".strip()
+    # 根据模式选择 API 端点和模型
+    if use_video_model:
+        url = "https://open.bigmodel.cn/api/paas/v4/videos/generations".strip()
+        model_name = "cogvideox-3"
+        file_ext = "mp4"
+        media_type = "视频"
+    else:
+        url = "https://open.bigmodel.cn/api/paas/v4/images/generations".strip()
+        model_name = "cogview-3-plus"
+        file_ext = "jpg"
+        media_type = "图片"
+    
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
-    image_paths = []
+    media_paths = []
     
     # 获取视觉锚点（从第一个 scene 中获取）
     visual_anchor = ""
@@ -594,8 +609,8 @@ def generate_images_zhipu(scenes_data, api_key, style_config=None):
         # 🔍 检查 image_prompt 是否为空
         raw_prompt = scene.get('image_prompt', '')
         if not raw_prompt or raw_prompt.strip() == "":
-            st.warning(f"⚠️ 分镜 {i+1} 的 image_prompt 为空，跳过图片生成")
-            image_paths.append(None)
+            st.warning(f"⚠️ 分镜 {i+1} 的 image_prompt 为空，跳过{media_type}生成")
+            media_paths.append(None)
             continue
         
         # 🎬 使用导演级 Prompt 构建器
@@ -618,18 +633,25 @@ def generate_images_zhipu(scenes_data, api_key, style_config=None):
             style_config=style,
             shot_type=shot_type
         )
+        
+        # CogVideoX 需要更详细的动作描述
+        if use_video_model:
+            enhanced_prompt += ", dynamic movement, smooth motion, cinematic video"
             
         # 确保提示词长度合适（智谱有长度限制）
         if len(enhanced_prompt) > 500:
             enhanced_prompt = enhanced_prompt[:497] + "..."
             
         payload = {
-            "model": "cogview-3-plus", 
-            "prompt": enhanced_prompt, 
-            "size": "1024x1920"
+            "model": model_name, 
+            "prompt": enhanced_prompt
         }
         
-        st.toast(f"🎨 正在绘制分镜 {i+1}/{len(scenes_data)} ...")
+        # 图片模式添加尺寸，视频模式使用默认
+        if not use_video_model:
+            payload["size"] = "1024x1920"
+        
+        st.toast(f"🎨 正在生成{media_type}分镜 {i+1}/{len(scenes_data)} ...")
         st.caption(f"📝 优化后提示词: {enhanced_prompt[:80]}...")
         
         try:
@@ -637,25 +659,25 @@ def generate_images_zhipu(scenes_data, api_key, style_config=None):
             
             # 🔍 详细的错误日志
             if 'data' in res:
-                img_url = res['data'][0]['url']
-                temp_name = f"temp_scene_{i}.jpg"
-                st.write(f"✅ 分镜 {i+1} 图片URL获取成功: {img_url[:50]}...")
-                urllib.request.urlretrieve(img_url, temp_name)
+                media_url = res['data'][0]['url']
+                temp_name = f"temp_scene_{i}.{file_ext}"
+                st.write(f"✅ 分镜 {i+1} {media_type}URL获取成功: {media_url[:50]}...")
+                urllib.request.urlretrieve(media_url, temp_name)
                 
                 # 验证文件是否下载成功
                 if os.path.exists(temp_name) and os.path.getsize(temp_name) > 0:
-                    st.write(f"✅ 分镜 {i+1} 图片下载成功: {temp_name} ({os.path.getsize(temp_name)} bytes)")
-                    image_paths.append(temp_name)
+                    st.write(f"✅ 分镜 {i+1} {media_type}下载成功: {temp_name} ({os.path.getsize(temp_name)} bytes)")
+                    media_paths.append(temp_name)
                 else:
-                    st.error(f"❌ 分镜 {i+1} 图片下载失败或文件为空")
-                    image_paths.append(None)
+                    st.error(f"❌ 分镜 {i+1} {media_type}下载失败或文件为空")
+                    media_paths.append(None)
             else:
                 st.error(f"❌ 分镜 {i+1} 智谱API返回错误: {res}")
-                image_paths.append(None)
+                media_paths.append(None)
         except Exception as e:
-            st.error(f"❌ 分镜 {i+1} 图片生成异常: {str(e)}")
-            image_paths.append(None)
-    return image_paths
+            st.error(f"❌ 分镜 {i+1} {media_type}生成异常: {str(e)}")
+            media_paths.append(None)
+    return media_paths
 
 def get_pexels_videos(query, api_key, required_duration):
     """Pexels API 真实素材兜底"""
