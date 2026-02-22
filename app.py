@@ -60,7 +60,7 @@ def init_session_state():
     if 'voice_id' not in st.session_state:
         st.session_state.voice_id = "zh-CN-YunxiNeural"
     if 'script_mode' not in st.session_state:
-        st.session_state.script_mode = "认知刺客 - 冲击力+优越感"
+        st.session_state.script_mode = "💡 认知唤醒·灯塔"
     if 'model_id' not in st.session_state:
         st.session_state.model_id = "deepseek-chat"
     if 'model_cost' not in st.session_state:

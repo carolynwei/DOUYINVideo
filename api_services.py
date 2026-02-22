@@ -321,76 +321,91 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
         st.json(visual_anchor_data)
     
     # 1️⃣ 风格定义库（增强版）- VideoTaxi Cinematography v3.0
+    # 6大升级版爆款风格
     STYLE_CONFIGS = {
-        "认知刺客 - 冲击力+优越感": {
-            "tone": "冲击、扎心、人间清醒。目标：摧毁旧认知，建立高阶真相。语言：短句、倒装、高频反问。",
-            "hook": "前3秒必须是反常识金句，直接否定普遍认知（你以为...其实...逻辑）",
-            "visual_base": "Sam Kolder + Roger Deakins 风格，高对比度，冷色调，电影级光影",
-            "visual_rules": """视觉：高冷电影感，专业 cinematography。
-镜头：多用 Medium shot 到 Extreme close-up 的切换，稳定器运镜，Dutch angle 制造张力。
-光影：Cinematic lighting, dramatic chiaroscuro, deep shadows, cold color grading。
-色调：深邃冷色调，强调光影明暗对比，orange and teal 色彩分级。
-参考：Sean Tucker 街头人文感 + Blade Runner 2049 视觉风格 + Sam Kolder 转场美学。""",
-            "shot_keywords": CINEMATIC_TEMPLATES["风格滤镜"]["sam_kolder"] + ", " + CINEMATIC_TEMPLATES["风格滤镜"]["roger_deakins"],
+        "🐱 万物有灵·叙事者": {
+            "tone": "诗意、反差萌、哲学感。目标：用非人类视角观察人间，发现平凡生活中的不凡诗意。语言：内心独白式，温暖而略带忧伤。",
+            "hook": "以非人类主角的第一人称开场，立即建立独特视角（我是家里的那只猫，今天我发现...）",
+            "visual_base": "Wes Anderson 对称美学 + 宫崎骏温暖色调，画面干净、构图奇特",
+            "visual_rules": """视觉：Wes Anderson 对称构图 + 宫崎骏的温暖治愈色调。
+镜头：低机位拍摄（模拟动物/物体视角），固定镜头为主，偶尔移轴效果营造童话感。
+光影：柔和自然光，温暖而充满希望，强调生活细节之美。
+色调：柔和 pastel 色调，干净通透，略带复古胶片感。
+参考：Wes Anderson《布达佩斯大饭店》+ 宫崎骏动画 + 治愈系摄影。""",
+            "shot_keywords": "Wes Anderson style, Symmetrical composition, Low angle shot, Pastel colors, Whimsical, Storybook aesthetic, Warm lighting",
+            "default_shot": "low_angle",
+            "bgm_style": "治愈系轻音乐，大提琴或钢琴独奏，有生活气息的环境音（如雨声、炉火声），音量8%"
+        },
+        "💡 认知唤醒·灯塔": {
+            "tone": "温暖、启发、向上。目标：从'摧毁认知'到'点亮认知'，给解药而非焦虑。语言：温柔但有力量，哲思而不晦涩。",
+            "hook": "以温柔的反常识开场，不给焦虑给希望（我们总说...但如果你换个角度...）",
+            "visual_base": "《白日梦想家》辽阔感 + 《小森林》宁静感，人文纪实+极简主义",
+            "visual_rules": """视觉：人文纪实 + 极简主义，参考《白日梦想家》的辽阔感和《小森林》的宁静感。
+镜头：慢镜头、大光圈、捕捉光影流动，用视觉隐喻表达抽象概念。
+光影：自然光为主，golden hour 和 blue hour 的柔和光线，强调光影层次。
+色调：温暖而通透，略带胶片质感，低饱和高亮度。
+参考：《白日梦想家》+《小森林》+ 人文纪实摄影。""",
+            "shot_keywords": CINEMATIC_TEMPLATES["风格滤镜"]["roger_deakins"] + ", minimalism, documentary style, warm tones",
+            "default_shot": "wide_shot",
+            "bgm_style": "史诗级但非压迫性的弦乐，空灵的人声哼唱，音量12%"
+        },
+        "🤝 共创养成·家人": {
+            "tone": "真诚、亲近、共建。目标：从'我要火'到'我们一起长大'，建立深度粉丝关系。语言：口语化、邀请式、充满感恩。",
+            "hook": "以求助或邀请开场，真诚地向'云家人'寻求建议（想做一期关于...的视频，想听听你们的想法）",
+            "visual_base": "真实Vlog质感，不追求过度精致，素颜、杂乱书桌都是真实感",
+            "visual_rules": """视觉：Authentic Vlog style，真实不造作，不追求过度精致。
+镜头：对着镜头说话、眼神交流、手持拍摄，营造'家'的氛围。
+光影：自然光或室内暖光，真实生活场景的照明。
+色调：自然肤色，略带暖调，真实生活感。
+参考：Casey Neistat Vlog + 真实生活记录。""",
+            "shot_keywords": CINEMATIC_TEMPLATES["风格滤镜"]["brandon_li"] + ", vlog style, authentic, talking head",
+            "default_shot": "medium_shot",
+            "bgm_style": "温暖简单的吉他曲，或用户投稿的原创音乐，音量6%"
+        },
+        "🎭 POV代入·影子": {
+            "tone": "陪伴、温柔、无声支持。目标：从'代入受害者'到'代入见证者/陪伴者'，提供无声的陪伴。语言：温柔而坚定，充满陪伴感。",
+            "hook": "以陪伴者的视角开场，让观众感到被理解（如果你现在正...别怕，我是那个陪着你的影子）",
+            "visual_base": "光影艺术+意识流，利用光影塑造陪伴感，画面朦胧但充满安全感",
+            "visual_rules": """视觉：光影艺术 + 意识流，利用光影塑造陪伴感。
+镜头：第三人称跟随视角、影子特写、雨滴滑过玻璃的镜头，营造朦胧美感。
+光影：强调光影对比，用阴影和光斑营造氛围，moody lighting。
+色调：低饱和，略带冷调但温暖，朦胧而安全。
+参考：光影艺术电影 + 意识流短片。""",
+            "shot_keywords": "Shadow play, Moody lighting, Silhouette, Rain on glass, Soft focus, Atmospheric, Contemplative",
+            "default_shot": "medium_shot",
+            "bgm_style": "极简钢琴、心跳声、轻柔的白噪音，音量10%"
+        },
+        "⚡ 情绪升华·破晓": {
+            "tone": "坚韧、希望、涅槃。目标：从'发泄爽感'到'涅槃重生'，展现战胜自己后的平和与力量。语言：从压抑到释放，最终归于平静。",
+            "hook": "以深渊开场，但暗示希望（那天我弄丢了一切...但后来我等到了第一缕阳光）",
+            "visual_base": "《海边的曼彻斯特》到《心灵奇旅》的转变，强烈对比",
+            "visual_rules": """视觉：强烈对比。前期黑白/冷色/混乱，后期彩色/暖色/秩序。
+镜头：前期快速剪辑表现混乱，后期长镜头表现平静。从极端特写到辽阔远景。
+光影：前期高对比阴影，后期柔和均匀光线。
+色调：前期 desaturated/冷色，后期 vibrant/暖色，象征从黑暗到光明。
+参考：《海边的曼彻斯特》到《心灵奇旅》的视觉转变。""",
+            "shot_keywords": CINEMATIC_TEMPLATES["风格滤镜"]["daniel_schiffer"] + ", contrast, transition, sunrise lighting",
             "default_shot": "close_up",
-            "bgm_style": "深沉鼓点，低频Bass，紧迫感氛围音乐（参考：Hans Zimmer 风格）"
+            "bgm_style": "前期压抑电子，后期宏大人声交响，音量在破晓时刻达到峰值30%"
         },
-        "听劝养成 - 互动率04+评论爆炸": {
-            "tone": "真诚、低姿态、蜕变感。目标：激发好为人师欲。语言：口语化、求助式、带评论区互动点。",
-            "hook": "以求助或反差展示开场（上次你们说我XX，我改了...）",
-            "visual_base": "Brandon Li 纪实风格，生活化场景，手机第一人称拍摄",
-            "visual_rules": """视觉：生活化、Vlog感，authentic documentary style。
-镜头：Handheld camera, slightly shaky footage, shallow depth of field, over-the-shoulder shots。
-光影：Natural lighting, golden hour warmth, practical light sources。
-色调：自然光，略带杂乱的生活背景，温暖真实。
-参考：Brandon Li 纪实风格 + Casey Neistat Vlog 美学。""",
-            "shot_keywords": CINEMATIC_TEMPLATES["风格滤镜"]["brandon_li"],
-            "default_shot": "medium_shot",
-            "bgm_style": "温暖原声吉他，轻快钢琴，治愈系背景Lofi（参考：Indie Folk 风格）"
-        },
-        "POV沉浸 - 第一人称+代入感": {
-            "tone": "压迫感、代入感、共情。目标：打破屏幕隔阙。语言：大量使用'你'，强调感官细节。",
-            "hook": "用如果你是...或想象一下你正在...直接把观众拉入场景",
-            "visual_base": "POV 极限运动 + FPS 游戏视角，超广角，沉浸式",
-            "visual_rules": """视觉：First-person POV，immersive perspective，subjective camera。
-镜头：Ultra-wide angle lens, motion blur, edge distortion, POV hands in frame。
-光影：Moody atmospheric lighting, practical sources, realistic ambiance。
-色调：焦虑感或压迫感氛围，slightly desaturated。
-参考：POV 极限运动运镜 + FPS 游戏视角 + 第一人称电影。""",
-            "shot_keywords": "First-person POV, Ultra-wide angle, Motion blur, Immersive perspective, Subjective camera, POV hands",
-            "default_shot": "pov",
-            "bgm_style": "紧张悬疑音效，心跳声，呼吸声，环境音增强沉浸感（参考：Horror Game OST）"
-        },
-        "情绪宣泄 - 极致反转+发疯文学": {
-            "tone": "极端、爽感、发疯文学。目标：提供情绪出口。语言：情绪波动剧烈，使用夸张动词。",
-            "hook": "用极端情绪词开场（我真的怒了！给我笑死了！），不讲道理只讲情",
-            "visual_base": "Daniel Schiffer + Edgar Wright 风格，快闪切换，高饱和度",
-            "visual_rules": """视觉：极具张力和压迫感，high energy commercial style。
-镜头：Extreme close-up (eyes/mouth), rapid zoom, shaky cam, quick cuts, Dutch angles。
-光影：High contrast, dramatic shadows, saturated colors, red and black palette。
-色调：高饱和度，红黑撞色，情绪化的色彩。
-参考：电影级的特写剪辑 + Edgar Wright 快速剪辑 + Daniel Schiffer 商业风格。""",
-            "shot_keywords": CINEMATIC_TEMPLATES["风格滤镜"]["daniel_schiffer"],
-            "default_shot": "extreme_close_up",
-            "bgm_style": "崩坏电子乐，混沌鼓点，尖叫声效，极具爆发力（参考：Trap/Dubstep 风格）"
-        },
-        "Meme抗象 - 低成本+病毒传播": {
-            "tone": "幽默、病毒、解压。目标：极低门槛传播。语言：洗脑梗、配合简单视觉节奏。",
-            "hook": "用网络梗或流行开场，降低接收门槛",
-            "visual_base": "TikTok viral style，扁平化，高饱和，表情包美学",
-            "visual_rules": """视觉：Flat design, pop colors, centered composition, clean and bright。
-镜头：Static camera, centered subject, simple background, eye-level framing。
-光影：Bright even lighting, minimal shadows, vibrant saturation。
-色调：明亮通透，多巴胺配色，高饱和。
-参考：表情包美学 + TikTok viral style + 简易动画。""",
-            "shot_keywords": "Flat design, Pop colors, Centered composition, Viral meme style, Bright lighting, High saturation",
-            "default_shot": "medium_shot",
-            "bgm_style": "洗脑神曲，魔性循环，高频电音，搭配特效音（参考：Vine/TikTok Viral Sounds）"
+        "🧘 解忧陪伴·树洞": {
+            "tone": "宁静、倾听、治愈。目标：不输出只倾听，打造赛博空间里的解忧杂货店。语言：极简或无文案，画面即语言。",
+            "hook": "以画面本身开场，无需多言（深夜便利店、雨中路灯、慢慢爬的蜗牛）",
+            "visual_base": "新海诚风格治愈系空镜 + 深夜食堂的烟火气",
+            "visual_rules": """视觉：新海诚风格治愈系空镜 + 深夜食堂的烟火气。
+镜头：固定机位，长镜头，观察生活里被忽略的细微之美。
+光影：城市夜景灯光、便利店暖光、雨夜反射，营造温暖孤独感。
+色调：高饱和但柔和，新海诚式的蓝紫色调 + 暖黄灯光对比。
+参考：新海诚动画 + 深夜食堂 + 城市夜景摄影。""",
+            "shot_keywords": "Makoto Shinkai style, Night cityscape, Convenience store, Rainy night, Lonely but warm, Long take, Static shot",
+            "default_shot": "wide_shot",
+            "bgm_style": "Lofi Hip Hop、爵士乐、黑胶唱片的底噪，音量5%"
         }
     }
     
     # 获取当前风格配置
-    style_config = STYLE_CONFIGS.get(style, STYLE_CONFIGS["🗡️ 认知刺客流（冲击力+优越感）"])
+    default_style = "💡 认知唤醒·灯塔"
+    style_config = STYLE_CONFIGS.get(style, STYLE_CONFIGS.get(default_style, list(STYLE_CONFIGS.values())[0]))
     
     # 2️⃣ VideoTaxi FSD 2.0 导演增强版主控提示词
     master_system_prompt = f"""你是一位顶尖视频制片人，正在执行【{style}】风格的任务。

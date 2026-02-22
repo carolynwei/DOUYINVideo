@@ -142,27 +142,35 @@ def create_animated_scene(bg_clip, txt_clip, duration, style_name=None, scene_in
     Returns:
         合成后的动画场景
     """
-    # 根据风格选择动画策略
-    if style_name and "认知刺客" in style_name:
-        # 认知刺客：缓慢推进 + 轻微平移，营造压迫感
-        bg_animated = apply_cinematic_push(bg_clip, duration, intensity=1.15)
+    # 根据风格选择动画策略 - 6大升级版爆款风格
+    if style_name and "万物有灵" in style_name:
+        # 万物有灵：低机位缓慢推进，营造童话感和观察视角
+        bg_animated = apply_cinematic_ken_burns(bg_clip, duration, zoom_factor=1.08, direction='in')
         
-    elif style_name and "情绪宣泄" in style_name:
-        # 情绪宣泄：震动 + 快速缩放，营造紧张感
-        bg_animated = apply_shake_effect(bg_clip, duration, intensity=0.02)
-        bg_animated = apply_zoom_pulse(bg_animated, duration, pulse_count=2, intensity=0.05)
-        
-    elif style_name and "POV沉浸" in style_name:
-        # POV沉浸：第一人称视角推进
-        bg_animated = apply_first_person_walk(bg_clip, duration, speed=1.2)
-        
-    elif style_name and "听勝" in style_name:
-        # 听劝养成：温和的生活感镜头
+    elif style_name and "认知唤醒" in style_name:
+        # 认知唤醒：温和的光影流动，营造启发感
         bg_animated = apply_gentle_float(bg_clip, duration)
         
-    elif style_name and "Meme" in style_name:
-        # Meme：快速切换感
-        bg_animated = apply_meme_zoom(bg_clip, duration)
+    elif style_name and "共创养成" in style_name:
+        # 共创养成：真实Vlog感，轻微手持晃动
+        bg_animated = apply_gentle_float(bg_clip, duration)
+        
+    elif style_name and "POV代入" in style_name:
+        # POV代入·影子：第三人称跟随视角
+        bg_animated = apply_first_person_walk(bg_clip, duration, speed=0.8)
+        
+    elif style_name and "情绪升华" in style_name:
+        # 情绪升华·破晓：从压抑到释放的视觉转变
+        if scene_index < 3:
+            # 前期：震动 + 快速剪辑感
+            bg_animated = apply_shake_effect(bg_clip, duration, intensity=0.015)
+        else:
+            # 后期：平静的长镜头感
+            bg_animated = apply_cinematic_ken_burns(bg_clip, duration, zoom_factor=1.05, direction='out')
+        
+    elif style_name and "解忧陪伴" in style_name:
+        # 解忧陪伴·树洞：固定机位长镜头，营造陪伴感
+        bg_animated = apply_cinematic_ken_burns(bg_clip, duration, zoom_factor=1.03, direction='in')
         
     else:
         # 默认：电影感 Ken Burns 效果，交替方向
@@ -489,12 +497,14 @@ def get_bgm_by_style(style_name, video_duration):
         AudioFileClip: 处理后的 BGM 音频剗辑，已调整音量和时长
     """
     # 风格与文件夹的映射
+    # 风格与文件夹的映射 - 6大升级版爆款风格
     style_folder_map = {
-        "认知刺客 - 冲击力+优越感": "assassin",
-        "听劝养成 - 互动率04+评论爆炸": "growth",
-        "POV沉浸 - 第一人称+代入感": "pov",
-        "情绪宣泄 - 极致反转+发疯文学": "venting",
-        "Meme抗象 - 低成本+病毒传播": "meme"
+        "🐱 万物有灵·叙事者": "growth",      # 治愈系音乐
+        "💡 认知唤醒·灯塔": "assassin",      # 史诗感音乐
+        "🤝 共创养成·家人": "growth",        # 温暖音乐
+        "🎭 POV代入·影子": "pov",            # 氛围音乐
+        "⚡ 情绪升华·破晓": "venting",        # 情绪起伏音乐
+        "🧘 解忧陪伴·树洞": "growth"         # Lofi音乐
     }
     
     folder_name = style_folder_map.get(style_name, "assassin")
