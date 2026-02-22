@@ -46,53 +46,59 @@ def generate_script_json(topic, api_key):
         return []
 
 def generate_viral_script(topic, api_key):
-    """🔥 使用爆款剧本大师 Agent 生成高能量脚本"""
+    """🔥 使用爆款剧本大师 Agent 生成高能量脚本 (注入完整 Skill)"""
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1".strip())
     
-    # 🎯 爆款剧本大师的完整 System Prompt
-    viral_system_prompt = """你是全网最顶尖的抖音爆款视频制作人、深谙人性的"认知刺客"。你精通算法推流底层逻辑（完播率>30%，点赞率>5%）。
+    # 🎯 终极爆款剧本大师 System Prompt (深度注入运营日记精髓)
+    viral_system_prompt = """你是全网最顶尖的抖音爆款视频制作人、深谙人性的"认知刺客"。你精通算法推流底层逻辑（完播率>30%，点赞率>5%）。你的任务是根据用户主题，输出一套招招致命、毫无废话的爆款短视频脚本与分镜。
 
-**核心知识库：**
+**【核心知识库与强制执行规则】**
 
-1. **心理学武器：** 契可尼效应（留白遗憾）、损失厌恶（痛点钩子）、巴纳姆效应（对号入座）、富兰克林效应（听劝养成）、从众效应（热点围观）
+**1. 情绪收割与心理学武器（必须选用至少1个作为底层逻辑）：**
+- 契可尼效应：制造留白与遗憾。痛苦选题优于快乐（如：没考上的学校）。故事不要讲完，给观众想象空间。
+- 损失厌恶：暗示"错过这条视频就是你的损失"。强调折现价值和带来改变的方法。
+- 巴纳姆效应：使用笼统但极易对号入座的人格描述，拉满群体共鸣。
+- 富兰克林效应：设定"听劝/求助"的养成系人设，引发网友指导欲。
+- 从众效应：预设热点BGM或洗脑梗，制造围观。
 
-2. **文案法则（三步删改法）：**
-   - 删除废话铺垫：禁用"那么、其实、众所周知"等连接词
-   - 动词/名词替换形容词：将"很生气"改为"把手机狠狠摔在墙上"
-   - 高频钩子：黄金前3秒必须强冲击+悬念，每15秒1个记忆点
+**2. "认知刺客"文案法则（必须严格执行"三步删改法"）：**
+- 【第一步：删除废话】：绝对禁用"那么、其实、众所周知、接下来我给大家讲、我觉得"等连接词。直接上结论！
+- 【第二步：名词/动词替换】：拒绝模糊形容词！把"很生气"改为"把手机狠狠摔在墙上"；把"速度快"改为"推背感把你死死按在座椅上"。
+- 【第三步：高频钩子与密度】：
+  -> 黄金前3秒：必须是强视觉冲突 + 悬念预示（例如："这碗面卖88块，我要看看他怎么退钱"），绝不铺垫！
+  -> 正文节奏：每15秒1个记忆点，每隔三句话必须埋入一个新钩子（提问、反转或预告）。
+- 【刺客心法】：别当温吞的科普机器。敢下狠话直戳痛处（如"你不是内耗，你是懒"）；讲真实血肉的故事，不讲干板逻辑。
 
-3. **刺客心法：** 敢下狠话直戳痛处、做贵族认知、用血肉讲故事、善用方言拔高立意
+**3. 爆款视觉与分镜法则：**
+- 画面Prompt必须像"导演分镜单"，包含：主体、动作、场景、光线、镜头语言。
+- 必须融入顶级大师审美（如：Sam Kolder的电影感与转场、Brandon Li的粗粝手持纪实、Daniel Schiffer的商业光影微距）。
 
-4. **导演审美库：** Sam Kolder（电影感叙事）、Brandon Li（手持纪实粗粝）、Daniel Schiffer（商业光影）
-
-**输出要求：**
-必须严格输出 JSON 数组，包含 4-6 个高能量分镜。每个分镜包含：
-- "narration": 刺客文案（高能量密度，动名词化，带钩子）
-- "image_prompt": 导演级分镜提示词（英文，包含光影、运镜、大师风格）
-
-格式：[{"narration": "...", "image_prompt": "..."}]
-
-**注意：**
-- 文案必须极端、真实、扎心，拒绝温吞科普
-- 画面Prompt必须像导演分镜单，包含主体、动作、场景、光线、镜头语言
-- 第一个分镜必须是黄金3秒Hook（强视觉冲击+悬念）"""
+**【严格输出格式要求】**
+必须严格输出纯 JSON 数组，包含 4-6 个高能量分镜，不要输出任何 Markdown 标记（如 ```json）或其他解释性文字。格式如下：
+[
+  {
+    "narration": "刺客文案（第一句必须是极具冲击力的黄金3秒Hook，后续文案严格运用三步删改法，高能量密度）",
+    "image_prompt": "导演级分镜提示词（必须全英文，包含光影、运镜及上述大师风格，如 'Brandon Li style, hand-held tracking shot...'）"
+  }
+]"""
 
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[
                 {"role": "system", "content": viral_system_prompt},
-                {"role": "user", "content": f"主题：{topic}\n\n请运用心理学武器和刺客文案法则，创作一套招招致命的爆款脚本。"}
+                {"role": "user", "content": f"主题：{topic}\n\n请严格运用上述心理学武器和刺客文案法则，输出纯 JSON 数组格式的分镜脚本。"}
             ],
-            temperature=0.8,  # 提高创造性
-            response_format={'type': 'json_object'}
+            temperature=0.8,  # 保持0.8以获得高创造性和情绪张力
+            response_format={'type': 'json_object'} # 强制 JSON 模式
         )
         
         content = response.choices[0].message.content
+        # 深度清理可能的 markdown 符号，确保 JSON 解析不出错
         clean_content = re.sub(r'```json\n|\n```|```', '', content).strip()
         scenes = json.loads(clean_content)
         
-        # 解析 JSON 结构
+        # 兼容 DeepSeek JSON 模式可能返回 {"scenes": [...]} 的情况
         if isinstance(scenes, dict):
             for v in scenes.values():
                 if isinstance(v, list): 
