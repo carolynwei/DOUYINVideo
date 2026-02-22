@@ -45,11 +45,13 @@ def hero_section():
             letter-spacing: -1px;
         ">🚖 VideoTaxi</h1>
         <p style="
-            margin: 0;
-            font-size: 16px;
-            color: #8b949e;
-            font-weight: 400;
-        ">开你的赛博出租车 · 在抖音公路上自由驰骋</p>
+            margin: 15px 0 0 0;
+            font-size: 20px;
+            color: #ffffff;
+            font-weight: 600;
+            text-shadow: 0 0 20px rgba(255,49,49,0.5);
+            letter-spacing: 2px;
+        ">在抖音公路上自由驰骋</p>
     </div>
     """, unsafe_allow_html=True)
     

@@ -18,66 +18,132 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             user_id TEXT PRIMARY KEY,
             credits INTEGER DEFAULT 0,
-            last_login_date DATE,
-            consecutive_days INTEGER DEFAULT 0
+            last_check_in_date DATE,
+            consecutive_days INTEGER DEFAULT 0,
+            total_check_ins INTEGER DEFAULT 0
         )
     ''')
     conn.commit()
     conn.close()
 
 def get_or_create_user(user_id):
-    """获取用户信息，如果是新用户则送初始积分"""
+    """获取用户信息，如果是新用户则创建（初始积分为0，需签到获得）"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
     user = c.fetchone()
     
     if not user:
-        # 新用户注册，赠送 20 初始积分
-        today = date.today().isoformat()
-        c.execute("INSERT INTO users (user_id, credits, last_login_date, consecutive_days) VALUES (?, 20, ?, 1)", (user_id, today))
+        # 新用户注册，初始积分为0，必须通过签到获得积分
+        # last_check_in_date 为 None 表示从未签到
+        c.execute("INSERT INTO users (user_id, credits, last_check_in_date, consecutive_days, total_check_ins) VALUES (?, 0, NULL, 0, 0)", (user_id,))
         conn.commit()
-        user = (user_id, 20, today, 1)
+        user = (user_id, 0, None, 0, 0)
         
     conn.close()
     # 返回格式: {'user_id': user[0], 'credits': user[1], ...}
     return {
         "user_id": user[0], 
         "credits": user[1], 
-        "last_login_date": user[2], 
-        "consecutive_days": user[3]
+        "last_check_in_date": user[2], 
+        "consecutive_days": user[3],
+        "total_check_ins": user[4] if len(user) > 4 else 0
     }
 
 def check_in(user_id):
-    """处理每日打卡签到逻辑"""
+    """处理每日打卡签到逻辑 - 增强版积分系统"""
     user = get_or_create_user(user_id)
     today = date.today()
-    last_login = date.fromisoformat(user["last_login_date"]) if user["last_login_date"] else None
+    last_check_in = date.fromisoformat(user["last_check_in_date"]) if user["last_check_in_date"] else None
     
-    if last_login == today:
-        return False, "今日已签到！"
+    if last_check_in == today:
+        return False, "今日已签到！", 0, user["consecutive_days"], user["credits"]
 
     # 计算连续签到
-    if last_login == today - timedelta(days=1):
+    if last_check_in == today - timedelta(days=1):
         new_consecutive = user["consecutive_days"] + 1
     else:
         new_consecutive = 1  # 断签了，重新计算
 
-    # 签到奖励逻辑：基础 5 分，连续签到天数每多1天多给1分，封顶 15 分
-    reward = min(5 + new_consecutive, 15)
-    new_credits = user["credits"] + reward
+    # ========== 增强版积分规则 ==========
+    # 基础奖励：5分
+    base_reward = 5
+    
+    # 连续签到加成：每连续1天额外+1分，封顶+10分（即连续11天达到最大加成）
+    consecutive_bonus = min(new_consecutive - 1, 10)
+    
+    # 里程碑奖励：
+    # - 第3天：额外+3分
+    # - 第7天：额外+7分  
+    # - 第15天：额外+15分
+    # - 第30天：额外+30分
+    milestone_bonus = 0
+    milestone_msg = ""
+    if new_consecutive == 3:
+        milestone_bonus = 3
+        milestone_msg = "🎯 达成3天里程碑！额外奖励3积分！"
+    elif new_consecutive == 7:
+        milestone_bonus = 7
+        milestone_msg = "🎯 达成7天里程碑！额外奖励7积分！"
+    elif new_consecutive == 15:
+        milestone_bonus = 15
+        milestone_msg = "🎯 达成15天里程碑！额外奖励15积分！"
+    elif new_consecutive == 30:
+        milestone_bonus = 30
+        milestone_msg = "🏆 达成30天超级里程碑！额外奖励30积分！"
+    
+    # 首签奖励：首次签到额外+10分
+    first_checkin_bonus = 0
+    if user["total_check_ins"] == 0:
+        first_checkin_bonus = 10
+        milestone_msg = "🎉 首次签到奖励10积分！"
+    
+    # 计算总奖励
+    total_reward = base_reward + consecutive_bonus + milestone_bonus + first_checkin_bonus
+    new_credits = user["credits"] + total_reward
+    new_total_check_ins = user["total_check_ins"] + 1
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+    
+    # 检查是否需要添加新列
+    try:
+        c.execute("SELECT total_check_ins FROM users LIMIT 1")
+    except sqlite3.OperationalError:
+        c.execute("ALTER TABLE users ADD COLUMN total_check_ins INTEGER DEFAULT 0")
+    
+    # 检查是否需要重命名列
+    try:
+        c.execute("SELECT last_check_in_date FROM users LIMIT 1")
+    except sqlite3.OperationalError:
+        # 旧版本使用 last_login_date，需要迁移
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN last_check_in_date DATE")
+        except sqlite3.OperationalError:
+            pass  # 列已存在
+    
     c.execute("""
         UPDATE users 
-        SET credits=?, last_login_date=?, consecutive_days=? 
+        SET credits=?, last_check_in_date=?, consecutive_days=?, total_check_ins=? 
         WHERE user_id=?
-    """, (new_credits, today.isoformat(), new_consecutive, user_id))
+    """, (new_credits, today.isoformat(), new_consecutive, new_total_check_ins, user_id))
     conn.commit()
     conn.close()
     
-    return True, f"签到成功！连续 {new_consecutive} 天，获得 {reward} 积分。当前总积分: {new_credits}"
+    # 构建返回消息
+    msg_parts = [f"✅ 签到成功！"]
+    if milestone_msg:
+        msg_parts.append(milestone_msg)
+    msg_parts.append(f"📊 连续 {new_consecutive} 天 | 本次获得 {total_reward} 积分")
+    msg_parts.append(f"💰 基础{base_reward} + 连续加成{consecutive_bonus}",)
+    if milestone_bonus > 0:
+        msg_parts[-1] += f" + 里程碑{milestone_bonus}"
+    if first_checkin_bonus > 0:
+        msg_parts[-1] += f" + 首签{first_checkin_bonus}"
+    msg_parts.append(f"💎 当前总积分: {new_credits}")
+    
+    full_msg = "\n".join(msg_parts)
+    return True, full_msg, total_reward, new_consecutive, new_credits
 
 def deduct_credits(user_id, cost):
     """扣除积分，返回是否成功"""

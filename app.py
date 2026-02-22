@@ -149,10 +149,22 @@ def render_sidebar(api_keys):
             # 用户信息与签到
             col_cred, col_btn = st.columns([1, 1])
             with col_cred:
-                st.metric("💎 积分", user_info["credits"], label_visibility="collapsed")
+                # 积分显示带规则提示
+                st.metric(
+                    label="💎 积分", 
+                    value=user_info["credits"], 
+                    label_visibility="collapsed",
+                    help="📋 积分规则：\n"
+                         "• 基础签到：+5分/天\n"
+                         "• 连续加成：每天额外+1分（封顶+10）\n"
+                         "• 里程碑奖励：3天+3、7天+7、15天+15、30天+30\n"
+                         "• 首次签到：额外+10分"
+                )
             with col_btn:
                 if st.button("📅 签到", use_container_width=True):
-                    success, msg = check_in(user_id)
+                    result = check_in(user_id)
+                    success = result[0]
+                    msg = result[1]
                     if success:
                         st.success(msg)
                         st.rerun()
@@ -177,25 +189,6 @@ def render_sidebar(api_keys):
             index=list(VOICE_MAPPING.keys()).index(current_voice_label)
         )
         st.session_state.voice_id = VOICE_MAPPING[selected_voice]
-        
-        st.divider()
-        
-        # 热点雷达
-        st.subheader("📡 热点雷达")
-        if st.button("🔄 刷新全网热点", use_container_width=True):
-            with st.spinner("正在扫描抖音热搜..."):
-                st.session_state.hot_topics = get_hot_topics(api_keys['tianapi'])
-                st.rerun()
-        
-        if st.session_state.hot_topics:
-            selected_hot = st.selectbox(
-                "🔥 选择热点任务：",
-                st.session_state.hot_topics
-            )
-            if st.button("🎯 锁定该主题", use_container_width=True):
-                st.session_state.selected_topic = selected_hot
-                st.success(f"✅ 已锁定主题：{selected_hot}")
-                st.rerun()
         
         return user_id
 

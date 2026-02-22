@@ -2,7 +2,7 @@
 """
 视频引擎模块：处理视频渲染、TTS合成、BGM混音等功能
 VideoTaxi 片段式情绪引擎 (Segmented Emotional Engine)
-确保所有中文字符正确显社
+确保所有中文字符正确显示
 """
 
 import os
@@ -38,11 +38,18 @@ def clean_ssml_for_subtitle(text):
     if not text:
         return ""
     
+    # 确保是字符串
+    if not isinstance(text, str):
+        text = str(text)
+    
     # 移除所有 XML/HTML 标签
     clean_text = re.sub(r'<[^>]+>', '', text)
     
     # 移除多余空格
     clean_text = ' '.join(clean_text.split())
+    
+    # 清理潜在乱码字符
+    clean_text = clean_text.replace('�', '').replace('显社', '显示')
     
     return clean_text
 
@@ -548,6 +555,13 @@ def get_bgm_by_style(style_name, video_duration):
 
 def create_subtitle_image(text, width=1080, height=400, fontsize=70):
     """🎨 用 Pillow 手工绘制字幕图片（彻底绕过 ImageMagick）"""
+    # 确保文本是字符串类型
+    if not isinstance(text, str):
+        text = str(text) if text else ""
+    
+    # 清理文本中的潜在乱码字符
+    text = text.replace('�', '').replace('显社', '显示')
+    
     if not FONT_PATH:
         raise FileNotFoundError("未找到字体文件！请确保 font.ttf 存在于仓库根目录")
     
@@ -555,12 +569,17 @@ def create_subtitle_image(text, width=1080, height=400, fontsize=70):
     img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     
-    # 加载字体
+    # 加载字体 - 使用更健壮的加载方式
     try:
         font = ImageFont.truetype(FONT_PATH, fontsize)
     except Exception as e:
         st.error(f"字体加载失败: {e}")
-        raise
+        # 尝试使用默认字体
+        try:
+            font = ImageFont.load_default()
+            st.warning("使用默认字体，中文字符可能显示为方框")
+        except:
+            raise
     
     # 文本自动换行
     lines = []
