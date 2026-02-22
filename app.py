@@ -161,6 +161,13 @@ with st.expander("💡 快速上手指南 (点此展开)"):
 if 'hot_topics' not in st.session_state: st.session_state.hot_topics = []
 if 'scenes_data' not in st.session_state: st.session_state.scenes_data = []
 
+# 🎯 渐进式工作流状态管理
+if 'script_versions' not in st.session_state: st.session_state.script_versions = []  # 版本历史
+if 'current_version_index' not in st.session_state: st.session_state.current_version_index = -1  # -1表示无版本
+if 'workflow_state' not in st.session_state: st.session_state.workflow_state = 'draft'  # draft → locked → producing → completed
+if 'chat_history' not in st.session_state: st.session_state.chat_history = []  # 对话微调历史
+if 'voice_id' not in st.session_state: st.session_state.voice_id = "zh-CN-YunxiNeural"
+
 with st.sidebar:
     st.header("👤 用户中心")
     
@@ -461,82 +468,254 @@ with tab_script:
                         
                         status.update(label=f"✅ {script_mode} 剧本创作完成！", state="complete")
                     st.success(f"✅ 剧本生成成功！已扣除 {model_cost} 积分")
+                    # 🔥 自动转换状态为 draft，并清空聊天历史
+                    st.session_state.workflow_state = 'draft'
+                    st.session_state.chat_history = []
                     st.rerun()
                 else:
                     st.error(f"❌ 积分不足！当前操作需要 {model_cost} 积分。请明日签到或更换低消耗模型。")
 
     with col2:
         st.subheader("✍️ 编导微调台")
+            
+        # 🎯 版本管理：显示历史版本切换下拉框
+        if len(st.session_state.script_versions) > 0:
+            st.caption(f"💾 已保存 {len(st.session_state.script_versions)} 个版本")
+                
+            # 构造版本选项列表
+            version_options = []
+            for i, ver in enumerate(st.session_state.script_versions):
+                timestamp = ver.get('timestamp', '未知时间')
+                version_options.append(f"📚 版本{i+1} ({timestamp})")
+                
+            # 版本切换下拉框
+            selected_version_label = st.selectbox(
+                "🔄 切换到历史版本：",
+                version_options,
+                index=st.session_state.current_version_index if st.session_state.current_version_index >= 0 else 0,
+                help="查看之前锁定的版本"
+            )
+                
+            # 获取选中的版本索引
+            selected_version_index = version_options.index(selected_version_label)
+                
+            # 如果用户切换了版本，加载该版本的剧本
+            if selected_version_index != st.session_state.current_version_index:
+                st.session_state.current_version_index = selected_version_index
+                st.session_state.scenes_data = st.session_state.script_versions[selected_version_index]['scenes']
+                st.session_state.workflow_state = 'draft'  # 切换版本后重置为草稿状态
+                st.rerun()
+                
+            st.markdown("---")
+            
+        # 显示剧本编辑器
         if st.session_state.scenes_data:
-            st.caption("💡 提示：你可以双击单元格修改文案，或调整提示词以改变画风")
-        
-        # 必须将编辑后的数据存下来，这样精修时才能拿到用户手动改过的最新版本
-        edited_scenes = st.data_editor(
-            st.session_state.scenes_data,
-            column_config={
-                "narration": st.column_config.TextColumn("🎙️ 口播文案", width="medium"),
-                "image_prompt": st.column_config.TextColumn("🎨 画面提示词", width="large"),
-            },
-            hide_index=True, 
-            num_rows="dynamic"
-        )
-        
-        st.markdown("---")
-        
-        # 使用列布局，让"精修"和"渲染"按钮并排展示，提升UI体验
-        col_refine, col_render = st.columns(2)
-        
-        with col_refine:
-            if st.button("✨ 让大师精修剧本", use_container_width=True, help="清除废话，强化钩子，提升文案爆款率"):
-                if not llm_api_key: 
-                    st.error("请配置 DeepSeek Key")
-                else:
-                    with st.spinner("大师正在逐句毒舌批改中..."):
-                        # 把用户目前编辑在表格里的最新数据传给精修函数
-                        refined_data = refine_script_data(edited_scenes, llm_api_key)
-                        if refined_data:
-                            # 覆盖 session_state，并强制刷新页面重新渲染表格
-                            st.session_state.scenes_data = refined_data
-                            st.rerun() 
+            # 🔒 根据状态决定是否禁用编辑
+            is_locked = (st.session_state.workflow_state == 'locked')
+                
+            if is_locked:
+                st.info("🔒 剧本已锁定，点击下方“🔓 解锁重新编辑”恢复修改")
+            else:
+                st.caption("💡 提示：你可以双击单元格修改文案，或调整提示词以改变画风")
+                
+            # 必须将编辑后的数据存下来
+            edited_scenes = st.data_editor(
+                st.session_state.scenes_data,
+                column_config={
+                    "narration": st.column_config.TextColumn("🎹️ 口播文案", width="medium"),
+                    "image_prompt": st.column_config.TextColumn("🎨 画面提示词", width="large"),
+                },
+                hide_index=True, 
+                num_rows="dynamic",
+                disabled=is_locked,  # 🔒 锁定后禁用编辑
+                key=f"data_editor_{st.session_state.workflow_state}"  # 使用动态key确保重新渲染
+            )
+                
+            st.markdown("---")
+                
+            # 💬 对话微调模块（仅在 draft 状态下显示）
+            if st.session_state.workflow_state == 'draft':
+                with st.expander("💬 对话微调：用自然语言修改剧本", expanded=False):
+                    st.caption("💡 例如：“第二段太平淡了，加点反转”、“开头更有冲击力”、“缩短到 30 秒”")
+                        
+                    # 聊天输入框
+                    user_request = st.text_area(
+                        "📝 你希望如何修改这个剧本？",
+                        placeholder="例如：第二段太平淡了，加点反转",
+                        height=100,
+                        key="chat_input"
+                    )
+                        
+                    if st.button("🤖 AI 微调", use_container_width=True, help="根据你的需求智能修改剧本"):
+                        if not user_request.strip():
+                            st.warning("请输入你的修改需求")
+                        elif not llm_api_key:
+                            st.error("请配置 DeepSeek Key")
+                        else:
+                            with st.spinner("🤖 AI 正在理解你的需求并修改剧本..."):
+                                from api_services import refine_script_by_chat
+                                refined_scenes = refine_script_by_chat(
+                                    current_scenes=edited_scenes,
+                                    user_request=user_request,
+                                    api_key=llm_api_key
+                                )
+                                    
+                                if refined_scenes:
+                                    # 保存聊天历史
+                                    st.session_state.chat_history.append({
+                                        "request": user_request,
+                                        "result": refined_scenes
+                                    })
+                                    # 更新剧本
+                                    st.session_state.scenes_data = refined_scenes
+                                    st.success("✅ 微调完成！")
+                                    st.rerun()
+                        
+                    # 显示聊天历史
+                    if len(st.session_state.chat_history) > 0:
+                        st.caption(f"📜 已微调 {len(st.session_state.chat_history)} 次")
+                        with st.expander("👁️ 查看聊天历史"):
+                            for i, chat in enumerate(st.session_state.chat_history):
+                                st.markdown(f"**第 {i+1} 轮修改**")
+                                st.markdown(f"> 你说：{chat['request']}")
+                                st.markdown("---")
+                
+            st.markdown("---")
+                
+            # 🎯 状态机：根据不同状态显示不同按钮
+            if st.session_state.workflow_state == 'draft':
+                # 草稿状态：显示"精修"和"锁定"按钮
+                col_refine, col_lock = st.columns(2)
+                    
+                with col_refine:
+                    if st.button("✨ 让大师精修剧本", use_container_width=True, help="清除废话，强化钩子，提升文案爆款率"):
+                        if not llm_api_key: 
+                            st.error("请配置 DeepSeek Key")
+                        else:
+                            with st.spinner("大师正在逐句毒舌批改中..."):
+                                refined_data = refine_script_data(edited_scenes, llm_api_key)
+                                if refined_data:
+                                    st.session_state.scenes_data = refined_data
+                                    st.rerun()
+                    
+                with col_lock:
+                    if st.button("🔒 锁定剧本", type="primary", use_container_width=True, help="确认剧本，进入生产阶段"):
+                        # 保存当前版本
+                        from datetime import datetime
+                        version = {
+                            'version': len(st.session_state.script_versions) + 1,
+                            'timestamp': datetime.now().strftime("%H:%M"),
+                            'scenes': edited_scenes.copy()
+                        }
+                        st.session_state.script_versions.append(version)
+                        st.session_state.current_version_index = len(st.session_state.script_versions) - 1
                             
-        with col_render:
-            if st.button("🚀 确认剧本，生成大片！", type="primary", use_container_width=True, help="渲染过程约需2-3 分钟"):
-                if not zhipu_api_key: st.error("请配置智谱 Key！")
-                else:
-                    # 使用 st.status 展示实时进度
-                    with st.status("🚀 视频引擎全力运转中...", expanded=True) as status:
-                        st.write("🎨 智谱 AI 正在绘制高清分镜...")
-                                
-                        # 动态展示配音提示
-                        selected_label = [k for k, v in VOICE_MAPPING.items() if v == st.session_state.voice_id][0]
-                        if st.session_state.voice_id.startswith("volc_"):
-                            st.write(f"🔥 火山引擎正在生成高表现力配音：{selected_label}")
+                        # 转换状态为 locked
+                        st.session_state.workflow_state = 'locked'
+                        st.success("✅ 剧本已锁定！")
+                        st.rerun()
+                
+            elif st.session_state.workflow_state == 'locked':
+                # 锁定状态：显示"解锁"和"一键生产"按钮
+                col_unlock, col_produce = st.columns(2)
+                    
+                with col_unlock:
+                    if st.button("🔓 解锁重新编辑", use_container_width=True, help="解锁剧本，恢复编辑模式"):
+                        st.session_state.workflow_state = 'draft'
+                        st.info("✅ 已解锁，可以继续编辑")
+                        st.rerun()
+                    
+                with col_produce:
+                    if st.button("🚀 一键生产视频", type="primary", use_container_width=True, help="渲染过程约2-3 分钟"):
+                        if not zhipu_api_key: 
+                            st.error("请配置智谱 Key！")
                         else:
-                            st.write(f"🎙️ Edge TTS 正在合成配音：{selected_label}")
-                                
-                        st.write("🎬 MoviePy 正在进行像素压制...")
-                                
-                        video_file = "ai_b_roll_output.mp4"
-                        # 传递 voice_id 和 style_name 参数
-                        success = render_ai_video_pipeline(
-                            edited_scenes, 
-                            zhipu_api_key, 
-                            video_file, 
-                            pexels_api_key,
-                            voice_id=st.session_state.voice_id,  # 关键：传递音色 ID
-                            style_name=st.session_state.get('script_mode')  # 🎵 关键：传递风格名称用于 BGM 匹配
-                        )
-                                
-                        if success:
-                            status.update(label="🎉 视频生成成功！", state="complete", expanded=False)
-                            st.balloons()
-                            # 核心修复：正确读取本地文件
-                            with open(video_file, "rb") as file:
-                                video_bytes = file.read()
-                                st.video(video_bytes)
-                                st.download_button("⬇️ 下载成片", data=video_bytes, file_name=f"{selected_topic}.mp4", mime="video/mp4", help="下载生成的视频文件")
-                        else:
-                            status.update(label="❌ 生成失败", state="error")
+                            # 转换状态为 producing
+                            st.session_state.workflow_state = 'producing'
+                            st.rerun()
+                
+            elif st.session_state.workflow_state == 'producing':
+                # 生产状态：执行视频生成
+                # 🎯 高级设置折叠面板：显示推荐参数并支持覆盖
+                with st.expander("🏛️ 高级设置：调整BGM/音色/画风", expanded=False):
+                    st.caption("💡 系统已根据风格自动匹配以下参数，你可以手动覆盖：")
+                        
+                    # BGM 选择
+                    st.markdown("**🎵 BGM 匹配**")
+                    style_name = st.session_state.get('script_mode', '🗡️ 认知刺客流（冲击力+优越感）')
+                    st.info(f"推荐：根据 {style_name} 风格自动匹配 BGM")
+                    # 这里可以添加手动选择BGM的逻辑，但由于MVP版本，暂时省略
+                        
+                    st.markdown("---")
+                        
+                    # 音色选择
+                    st.markdown("**🎹️ 音色选择**")
+                    current_voice_label = [k for k, v in VOICE_MAPPING.items() if v == st.session_state.voice_id][0]
+                    st.info(f"当前：{current_voice_label}")
+                    st.caption("💡 可以在侧边栏中切换音色")
+                        
+                    st.markdown("---")
+                        
+                    # 画风预览
+                    st.markdown("**🎨 画面风格**")
+                    st.info("根据剧本中的 image_prompt 自动绘制")
+                    
+                # 使用 st.status 展示实时进度
+                with st.status("🚀 视频引擎全力运转中...", expanded=True) as status:
+                    st.write("🎨 智谱 AI 正在绘制高清分镜...")
+                        
+                    # 动态展示配音提示
+                    selected_label = [k for k, v in VOICE_MAPPING.items() if v == st.session_state.voice_id][0]
+                    if st.session_state.voice_id.startswith("volc_"):
+                        st.write(f"🔥 火山引擎正在生成高表现力配音：{selected_label}")
+                    else:
+                        st.write(f"🎹️ Edge TTS 正在合成配音：{selected_label}")
+                        
+                    st.write("🎬 MoviePy 正在进行像素压制...")
+                        
+                    video_file = "ai_b_roll_output.mp4"
+                    # 传递 voice_id 和 style_name 参数
+                    success = render_ai_video_pipeline(
+                        edited_scenes, 
+                        zhipu_api_key, 
+                        video_file, 
+                        pexels_api_key,
+                        voice_id=st.session_state.voice_id,
+                        style_name=st.session_state.get('script_mode')
+                    )
+                        
+                    if success:
+                        status.update(label="🎉 视频生成成功！", state="complete", expanded=False)
+                        st.balloons()
+                            
+                        # 转换状态为 completed
+                        st.session_state.workflow_state = 'completed'
+                            
+                        # 读取视频文件
+                        with open(video_file, "rb") as file:
+                            video_bytes = file.read()
+                            st.video(video_bytes)
+                            st.download_button(
+                                "⬇️ 下载成片", 
+                                data=video_bytes, 
+                                file_name=f"{st.session_state.get('selected_topic', 'video')}.mp4", 
+                                mime="video/mp4", 
+                                help="下载生成的视频文件"
+                            )
+                    else:
+                        status.update(label="❌ 生成失败", state="error")
+                        # 重置状态为 locked
+                        st.session_state.workflow_state = 'locked'
+                
+            elif st.session_state.workflow_state == 'completed':
+                # 完成状态：显示重新创作按钮
+                st.success("🎉 视频已生成完成！")
+                if st.button("🆕 创作下一个视频", type="primary", use_container_width=True):
+                    # 重置状态
+                    st.session_state.workflow_state = 'draft'
+                    st.session_state.scenes_data = []
+                    st.session_state.chat_history = []
+                    st.rerun()
 
 # ==================== Tab 2: 影像工坊 ====================
 with tab_video:

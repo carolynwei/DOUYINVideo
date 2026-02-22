@@ -261,10 +261,11 @@ async def text_to_mp3(text, filename, voice_id="zh-CN-YunxiNeural"):
             print("⚠️ 火山引擎不可用，回退到 Edge TTS 模式")
             voice_id = "zh-CN-YunxiNeural"  # 使用默认男声
     
-    # 🎙️ 路由 2：Edge TTS (免费兜底)
+    # 🎹️ 路由 2：Edge TTS (免费兼底)
     for attempt in range(3):
         try:
-            # 删除了 proxy 参数，云端直连速度极快
+            # 🎵 支持SSML情绪标签：如果文本中包含<prosody>标签，Edge TTS会自动识别
+            # 注意：Edge TTS原生支持SSML，直接传入包含<prosody>的文本即可
             communicate = edge_tts.Communicate(text, voice_id, rate="+10%")
             await communicate.save(filename)
             return True
