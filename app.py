@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-VideoTaxi (VibeDrive) - 认知刺客创作平台
+VideoTaxi (VibeDrive) - AI短视频创作平台
 开你的 VideoTaxi，在抖音公路上自由驰骋
-确保所有中文字符正确显示
+VideoTaxi：让流量为你 7x24 小时跑单
 """
 
 import streamlit as st
@@ -19,7 +19,7 @@ from scheduler_tower import SchedulerTower, FeedbackDatabase, DataAwareNavigator
 init_db()
 init_chat_db()  # 初始化聊天记录表
 
-st.set_page_config(page_title="🚖 VideoTaxi - 认知刺客创作平台", page_icon="🚖", layout="wide")
+st.set_page_config(page_title="🚖 VideoTaxi - AI短视频创作平台", page_icon="🚖", layout="wide")
 
 # 🎮 赛博驾驶舱主题 (Cyber Taxi Dashboard Theme)
 def set_cyber_taxi_theme():
@@ -263,7 +263,7 @@ with st.expander("💡 快速上手指南 (点此展开)"):
     1. **选热点**：从左侧获取最新的抖音趋势
     2. **AI 编剧**：
        - 标准模式：快速生成，注入爆款基因
-       - 爆款大师：深度运用心理学武器+认知刺客文案
+       - 爆款大师：深度运用心理学武器+五大风格文案（认知刺客/听劝养成/POV沉浸/情绪宣泄/Meme抗象）
     3. **精修剧本**：毒舌总监批改，提升文案能量密度
     4. **一键出片**：渲染过程约需2-3 分钟
     
@@ -422,7 +422,7 @@ with st.sidebar:
     st.markdown("""
     <div style="text-align: center; padding: 10px 0;">
         <h2 style="margin: 0; color: #FF3131;">🚖 VideoTaxi</h2>
-        <p style="margin: 0; font-size: 12px; color: #8b949e;">认知刺客创作平台</p>
+        <p style="margin: 0; font-size: 12px; color: #8b949e;">让流量为你 7x24 小时跑单</p>
     </div>
     """, unsafe_allow_html=True)
     

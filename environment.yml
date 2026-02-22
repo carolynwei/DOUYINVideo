@@ -1,0 +1,13 @@
+name: douyin-video-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10  # 3.10 版本对当下各类 AI SDK 和多媒体处理库的兼容性最好
+  - pip
+  - pip:
+      - streamlit>=1.30.0
+      - requests>=2.31.0
+      - openai>=1.10.0
+      - edge-tts>=6.1.9
+      - moviepy==1.0.3  # 严格锁定 1.0.3 版本，防止新版 API 变动导致报错
