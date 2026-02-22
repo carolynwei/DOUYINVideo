@@ -115,11 +115,52 @@ VOICE_MAPPING = {
 
 # ==================== 侧边栏 ====================
 
+def render_login_page():
+    """渲染登录页面 - 居中显示醒目的 Logo 和标语"""
+    # 使用空白占位让内容居中
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        # 大号 Logo 和标语
+        st.markdown("""
+        <div style="text-align: center; padding: 40px 30px; margin: 20px 0; 
+                    border: 2px solid #FF3131; border-radius: 20px;
+                    background: linear-gradient(135deg, rgba(255,49,49,0.1) 0%, rgba(13,17,23,0.95) 100%);">
+            <div style="font-size: 80px; margin-bottom: 15px;">🚖</div>
+            <div style="font-size: 48px; font-weight: 900; color: #FF3131; 
+                        text-shadow: 0 0 30px rgba(255,49,49,0.5); 
+                        margin-bottom: 15px; letter-spacing: 2px;">VIDEOTAXI</div>
+            <div style="font-size: 20px; color: #fff; margin-bottom: 25px; 
+                        letter-spacing: 3px; font-weight: 500;">在抖音公路上自由驰骋</div>
+            <div style="background: linear-gradient(90deg, #FF3131 0%, #8b0000 100%); 
+                        padding: 12px 25px; border-radius: 8px; display: inline-block;">
+                <span style="color: white; font-size: 16px; font-weight: 700;">⚡ 7×24H 流量跑单中</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # 登录输入框
+        user_id = st.text_input(
+            "👤 输入用户名开始创作",
+            value=st.session_state.user_id,
+            placeholder="请输入用户名",
+            key="user_login_center"
+        )
+        
+        if user_id:
+            st.session_state.user_id = user_id
+            st.rerun()
+    
+    return None
+
+
 def render_sidebar(api_keys):
-    """渲染侧边栏 - 品牌监控座舱"""
+    """渲染侧边栏 - 品牌监控座舱（登录后显示）"""
     with st.sidebar:
-        # ===== 品牌监控区：双口号展示 =====
-        # 使用 Streamlit 原生组件 + 简单 HTML，避免 CSS 动画
+        # ===== 品牌监控区：小型 Logo（登录后） =====
         st.markdown("""
         <div style="text-align: center; padding: 15px; margin-bottom: 15px; border: 1px solid #FF3131; border-radius: 10px;">
             <div style="font-size: 42px; margin-bottom: 5px;">🚖</div>
@@ -133,13 +174,15 @@ def render_sidebar(api_keys):
         
         st.divider()
         
-        # 用户登录
-        user_id = st.text_input(
-            "👤 用户名",
-            value=st.session_state.user_id,
-            placeholder="输入用户名",
-            key="user_login"
-        )
+        # 显示当前用户
+        user_id = st.session_state.user_id
+        st.caption(f"👤 当前用户: {user_id}")
+        
+        if st.button("🚪 退出登录", use_container_width=True):
+            st.session_state.user_id = ""
+            st.rerun()
+        
+        st.divider()
         
         if user_id:
             st.session_state.user_id = user_id
@@ -210,36 +253,23 @@ def main():
     
     # 加载 API Keys
     api_keys = load_api_keys()
-    
-    # 渲染侧边栏，获取用户ID
+        
+    # 检查登录状态
+    if not st.session_state.user_id:
+        # 未登录 - 显示居中登录页面
+        render_login_page()
+        return
+        
+    # 已登录 - 渲染侧边栏和主内容
     user_id = render_sidebar(api_keys)
-    
+        
     # 主内容区 - 三态分离工作流（美化版）
     st.markdown("""
-    <div style="
-        background: linear-gradient(135deg, rgba(255,49,49,0.08) 0%, rgba(13,17,23,0.95) 50%, rgba(255,49,49,0.05) 100%);
-        border-radius: 16px;
-        padding: 20px 25px;
-        margin-bottom: 20px;
-        border: 1px solid rgba(255,49,49,0.15);
-        position: relative;
-        overflow: hidden;
-    ">
-        <div style="
-            position: absolute;
-            top: -50%;
-            left: -10%;
-            width: 30%;
-            height: 200%;
-            background: linear-gradient(90deg, transparent, rgba(255,49,49,0.1), transparent);
-            transform: rotate(15deg);
-            pointer-events: none;
-        "></div>
-        
-        <div style="font-size: 16px; font-weight: 700; color: #ffffff; margin-bottom: 8px;">
+    <div style="border: 1px solid #FF3131; border-radius: 10px; padding: 15px; margin-bottom: 15px;">
+        <div style="font-size: 16px; font-weight: bold; color: #333; margin-bottom: 5px;">
             VideoTaxi 三态工作流
         </div>
-        <div style="font-size: 12px; color: #8b949e;">
+        <div style="font-size: 12px; color: #666;">
             构思 → 生产 → 资产
         </div>
     </div>
