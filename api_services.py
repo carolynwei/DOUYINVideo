@@ -256,7 +256,20 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
 
 【输出要求】：
 必须严格输出JSON数组，包含4-6个分镜。格式：
-[{{"narration": "口播文案（经过自检的刺客文案）", "image_prompt": "English prompt with {style_config['shot_keywords']}, cinematic lighting, detailed scene"}}]
+[{{
+  "start_time": 0,  // 该分镜开始时间(秒)
+  "end_time": 3,    // 该分镜结束时间(秒)
+  "narration": "口播文案（经过自检的刺客文案）", 
+  "emotion_vibe": "cold_question",  // 情绪标签: cold_question/angry_shout/deep_mystery/excited_announce/fierce_warning/sad_sigh/sarcastic_mock/neutral_narrate
+  "image_prompt": "English prompt with {style_config['shot_keywords']}, cinematic lighting, detailed scene",
+  "sfx": "heartbeat_heavy.mp3"  // 音效文件名(可选)，选项: heartbeat_heavy/glass_shatter/whoosh/tension_riser/emotional_swell/silence
+}}]
+
+⚡ **关键：导演时间轴逻辑**：
+- start_time/end_time 必须连续且紧凑（如 0-3, 3-7, 7-11...）
+- 总时长应控制在30-60秒内
+- emotion_vibe 必须从8种情绪中选择，与 narration 的情绪匹配
+- sfx 应与分镜氛围匹配，高潮处加强，平静处可留空
 
 绝对不要输出Markdown标记（如 ```json）或其他解释性文字。"""
     

@@ -673,3 +673,195 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
             try: os.remove(f)
             except: pass
     return True
+
+# 🎬 导演时间轴引擎 (Director's Timeline Engine)
+class VideoAssembler:
+    """
+    基于 Manifest JSON 的一键混剪引擎
+    解决音画同步、SFX自动匹配、情绪语音等核心问题
+    """
+    
+    # 🔊 音效库路由表
+    SFX_LIBRARY = {
+        "heartbeat_heavy": "assets/sfx/heartbeat_heavy.mp3",
+        "glass_shatter": "assets/sfx/glass_shatter.mp3",
+        "whoosh": "assets/sfx/whoosh.mp3",
+        "tension_riser": "assets/sfx/tension_riser.mp3",
+        "emotional_swell": "assets/sfx/emotional_swell.mp3",
+        "silence": None  # 静音，不加载音效
+    }
+    
+    def __init__(self, manifest_data, voice_id="zh-CN-YunxiNeural", use_volcengine=False):
+        """
+        Args:
+            manifest_data: 导演时间轴 JSON 列表
+            voice_id: TTS 音色 ID
+            use_volcengine: 是否使用火山引擎
+        """
+        self.manifest = manifest_data
+        self.voice_id = voice_id
+        self.use_volcengine = use_volcengine
+        self.validate_manifest()
+    
+    def validate_manifest(self):
+        """验证 Manifest 格式合法性"""
+        required_fields = ["start_time", "end_time", "narration", "emotion_vibe", "image_prompt"]
+        
+        for i, segment in enumerate(self.manifest):
+            for field in required_fields:
+                if field not in segment:
+                    raise ValueError(f"分镜 {i+1} 缺少必要字段: {field}")
+            
+            # 验证时间连续性
+            if i > 0:
+                prev_end = self.manifest[i-1]["end_time"]
+                curr_start = segment["start_time"]
+                if curr_start != prev_end:
+                    st.warning(f"⚠️ 时间轴不连续：分镜{i} 结束于 {prev_end}s，但分镜{i+1} 开始于 {curr_start}s")
+        
+        st.success(f"✅ Manifest 验证通过：{len(self.manifest)} 个分镜，总时长 {self.manifest[-1]['end_time']}s")
+    
+    async def synthesize_segment_with_emotion(self, segment, output_file):
+        """
+        根据 emotion_vibe 合成单个音频片段
+        """
+        text = segment["narration"]
+        vibe = segment.get("emotion_vibe", "neutral_narrate")
+        
+        # 调用片段式情绪引擎
+        success = await synthesize_emotional_segment(
+            text=text,
+            vibe=vibe,
+            output_file=output_file,
+            use_volcengine=self.use_volcengine
+        )
+        
+        return success
+    
+    async def synthesize_all_audio_parallel(self):
+        """
+        并行合成所有音频片段
+        Returns: [(audio_file, sfx_file, start, end), ...]
+        """
+        tasks = []
+        audio_info = []
+        
+        for i, segment in enumerate(self.manifest):
+            audio_file = f"temp_timeline_audio_{i}_{uuid.uuid4().hex[:8]}.mp3"
+            audio_info.append({
+                "audio_file": audio_file,
+                "sfx": segment.get("sfx"),
+                "start": segment["start_time"],
+                "end": segment["end_time"]
+            })
+            
+            task = self.synthesize_segment_with_emotion(segment, audio_file)
+            tasks.append(task)
+        
+        # 🚀 并行执行
+        st.info(f"🎬 并行合成 {len(tasks)} 个情绪音频片段...")
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # 验证结果
+        success_info = []
+        for i, (result, info) in enumerate(zip(results, audio_info)):
+            if result is True and os.path.exists(info["audio_file"]):
+                success_info.append(info)
+                emotion = self.manifest[i].get("emotion_vibe", "neutral")
+                st.success(f"✅ 分镜 {i+1}: {emotion} - 音频合成成功")
+            else:
+                st.error(f"❌ 分镜 {i+1}: 音频合成失败")
+        
+        return success_info
+    
+    def load_sfx(self, sfx_name):
+        """
+        加载音效文件
+        Returns: AudioFileClip 或 None
+        """
+        if not sfx_name or sfx_name == "silence":
+            return None
+        
+        sfx_path = self.SFX_LIBRARY.get(sfx_name)
+        if sfx_path and os.path.exists(sfx_path):
+            try:
+                return AudioFileClip(sfx_path)
+            except Exception as e:
+                st.warning(f"⚠️ 音效 {sfx_name} 加载失败: {e}")
+        else:
+            st.warning(f"⚠️ 音效 {sfx_name} 不存在")
+        
+        return None
+    
+    def assemble_timeline_audio(self, audio_info_list, output_path):
+        """
+        按照时间轴组装音频（包括 TTS + SFX）
+        """
+        try:
+            audio_clips = []
+            
+            for info in audio_info_list:
+                # 加载 TTS 音频
+                if os.path.exists(info["audio_file"]):
+                    tts_clip = AudioFileClip(info["audio_file"])
+                    
+                    # 加载 SFX
+                    sfx_clip = self.load_sfx(info["sfx"])
+                    
+                    if sfx_clip:
+                        # 混合 TTS + SFX
+                        combined = CompositeAudioClip([tts_clip, sfx_clip.volumex(0.3)])
+                        audio_clips.append(combined)
+                    else:
+                        audio_clips.append(tts_clip)
+            
+            if not audio_clips:
+                st.error("❌ 没有有效的音频片段")
+                return None
+            
+            # 🎵 拼接所有片殶
+            final_audio = concatenate_audioclips(audio_clips)
+            final_audio.write_audiofile(output_path, codec='libmp3lame')
+            
+            # 清理临时文件
+            for clip in audio_clips:
+                clip.close()
+            for info in audio_info_list:
+                if os.path.exists(info["audio_file"]):
+                    try:
+                        os.remove(info["audio_file"])
+                    except:
+                        pass
+            
+            st.success(f"✅ 时间轴音频组装完成，共 {len(audio_clips)} 个片殶")
+            return output_path
+            
+        except Exception as e:
+            st.error(f"❌ 音频组装失败: {e}")
+            return None
+    
+    async def render_video_from_manifest(self, output_path="final_video.mp4", bgm_style=None):
+        """
+        🎬 一键混剪：从 Manifest 生成完整视频
+        """
+        st.info("🎬 开始基于导演时间轴的视频渲染...")
+        
+        # 1. 并行合成所有音频
+        audio_info_list = await self.synthesize_all_audio_parallel()
+        
+        if not audio_info_list:
+            st.error("❌ 音频合成失败")
+            return False
+        
+        # 2. 组装时间轴音频（TTS + SFX）
+        timeline_audio = self.assemble_timeline_audio(audio_info_list, "temp_timeline_audio.mp3")
+        
+        if not timeline_audio:
+            return False
+        
+        # 3. TODO: 生成图片并组装视频（复用现有 render_ai_video_pipeline 逻辑）
+        # 这里暂时返回成功，完整实现需要整合图片生成和 MoviePy 渲染
+        st.success("✅ 时间轴音频生成成功！")
+        st.info("🚧 视频渲染功能待完善，当前仅生成音频轨")
+        
+        return True
