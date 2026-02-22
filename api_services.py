@@ -138,19 +138,37 @@ def generate_images_zhipu(scenes_data, api_key):
     image_paths = []
     
     for i, scene in enumerate(scenes_data):
+        # 🔍 检查 image_prompt 是否为空
+        if not scene.get('image_prompt') or scene['image_prompt'].strip() == "":
+            st.warning(f"⚠️ 分镜 {i+1} 的 image_prompt 为空，跳过图片生成")
+            image_paths.append(None)
+            continue
+            
         payload = {"model": "cogview-3-plus", "prompt": scene['image_prompt'], "size": "1080x1920"}
         st.toast(f"🎨 正在绘制分镜 {i+1}/{len(scenes_data)} ...")
         
         try:
             res = requests.post(url, json=payload, headers=headers, timeout=60).json()
+            
+            # 🔍 详细的错误日志
             if 'data' in res:
                 img_url = res['data'][0]['url']
                 temp_name = f"temp_scene_{i}.jpg"
+                st.write(f"✅ 分镜 {i+1} 图片URL获取成功: {img_url[:50]}...")
                 urllib.request.urlretrieve(img_url, temp_name)
-                image_paths.append(temp_name)
+                
+                # 验证文件是否下载成功
+                if os.path.exists(temp_name) and os.path.getsize(temp_name) > 0:
+                    st.write(f"✅ 分镜 {i+1} 图片下载成功: {temp_name} ({os.path.getsize(temp_name)} bytes)")
+                    image_paths.append(temp_name)
+                else:
+                    st.error(f"❌ 分镜 {i+1} 图片下载失败或文件为空")
+                    image_paths.append(None)
             else:
+                st.error(f"❌ 分镜 {i+1} 智谱API返回错误: {res}")
                 image_paths.append(None)
-        except:
+        except Exception as e:
+            st.error(f"❌ 分镜 {i+1} 图片生成异常: {str(e)}")
             image_paths.append(None)
     return image_paths
 

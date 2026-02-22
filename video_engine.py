@@ -230,7 +230,9 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
 
     # 2. 逐分镜合成
     for i, scene in enumerate(scenes_data):
-        if not audio_files[i]: continue
+        if not audio_files[i]: 
+            st.warning(f"⚠️ 分镜 {i+1} 音频生成失败，跳过")
+            continue
             
         audio_clip = AudioFileClip(audio_files[i])
         dur = audio_clip.duration
@@ -238,9 +240,15 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
         
         # 画面逻辑：AI绘画 > 黑屏占位
         if image_paths[i]:
-            bg = ImageClip(image_paths[i]).set_duration(dur).resize(height=1920).crop(x_center=1080/2, width=1080)
-            temp_files.append(image_paths[i])
+            st.write(f"🖼️ 分镜 {i+1} 使用AI绘画: {image_paths[i]}")
+            try:
+                bg = ImageClip(image_paths[i]).set_duration(dur).resize(height=1920).crop(x_center=1080/2, width=1080)
+                temp_files.append(image_paths[i])
+            except Exception as e:
+                st.error(f"❌ 分镜 {i+1} 图片加载失败: {e}，使用黑屏占位")
+                bg = ColorClip(size=(1080, 1920), color=(0, 0, 0)).set_duration(dur)
         else:
+            st.write(f"⚫ 分镜 {i+1} 图片为空，使用黑屏占位")
             # 🔑 修复：使用 ColorClip 创建纯黑背景
             bg = ColorClip(size=(1080, 1920), color=(0, 0, 0)).set_duration(dur)
 
