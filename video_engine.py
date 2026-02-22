@@ -18,6 +18,7 @@ import subprocess
 import sys
 import random
 import re
+import math
 from PIL import Image, ImageDraw, ImageFont
 import streamlit as st
 from moviepy.editor import (
@@ -59,10 +60,8 @@ def apply_ken_burns_effect(clip, duration, zoom_factor=1.15, direction='in'):
         direction: 'in'(放大) 或 'out'(缩小)
     """
     if direction == 'in':
-        # 从正常大小缓慢放大
         return clip.resize(lambda t: 1 + (zoom_factor - 1) * t / duration)
     else:
-        # 从放大状态缓慢缩小到正常
         return clip.resize(lambda t: zoom_factor - (zoom_factor - 1) * t / duration)
 
 
@@ -115,12 +114,9 @@ def apply_subtle_zoom_pulse(clip, duration, pulse_count=2):
         duration: 视频时长
         pulse_count: 呼吸次数
     """
-    import math
-    
     def pulse_resize(t):
-        # 正弦波产生呼吸效果
         pulse = math.sin(2 * math.pi * pulse_count * t / duration)
-        return 1.0 + 0.03 * pulse  # 3% 的缩放变化
+        return 1.0 + 0.03 * pulse
     
     return clip.resize(pulse_resize)
 
@@ -182,16 +178,12 @@ def apply_cinematic_push(clip, duration, intensity=1.15):
     """
     电影级镜头推进效果 - 模拟专业摄像机的推进镜头
     """
-    import math
-    
     def push_resize(t):
-        # 缓动函数：开始慢，中间快，结束慢
         progress = t / duration
-        ease = 1 - math.pow(1 - progress, 3)  # ease-out-cubic
+        ease = 1 - math.pow(1 - progress, 3)
         return 1.0 + (intensity - 1.0) * ease
     
     def push_position(t):
-        # 轻微向中心移动，模拟镜头聚焦
         progress = t / duration
         w, h = clip.size
         center_x = w * 0.02 * progress
@@ -206,18 +198,14 @@ def apply_cinematic_ken_burns(clip, duration, zoom_factor=1.12, direction='in'):
     """
     电影级 Ken Burns 效果 - 更平滑的缩放和移动
     """
-    import math
-    
     def smooth_resize(t):
         progress = t / duration
-        # 使用正弦缓动
         if direction == 'in':
             return 1.0 + (zoom_factor - 1.0) * (0.5 - 0.5 * math.cos(progress * math.pi))
         else:
             return zoom_factor - (zoom_factor - 1.0) * (0.5 - 0.5 * math.cos(progress * math.pi))
     
     def smooth_pan(t):
-        # 对角线移动
         progress = t / duration
         w, h = clip.size
         offset = 0.03 * (0.5 - 0.5 * math.cos(progress * math.pi))
@@ -234,12 +222,8 @@ def apply_shake_effect(clip, duration, intensity=0.02):
     """
     震动效果 - 用于紧张、激动的场景
     """
-    import random
-    import math
-    
     def shake_position(t):
         w, h = clip.size
-        # 使用噪声函数产生更自然的震动
         noise_x = math.sin(t * 20) * intensity * w
         noise_y = math.cos(t * 25) * intensity * h
         return (noise_x, noise_y)
@@ -251,12 +235,9 @@ def apply_zoom_pulse(clip, duration, pulse_count=2, intensity=0.05):
     """
     心跳式缩放 - 强调节奏感
     """
-    import math
-    
     def pulse_resize(t):
         progress = t / duration
         pulse = math.sin(2 * math.pi * pulse_count * progress)
-        # 确保缩放始终大于1
         return 1.0 + intensity * (pulse + 1) / 2
     
     return clip.resize(pulse_resize)
@@ -266,21 +247,11 @@ def apply_first_person_walk(clip, duration, speed=1.0):
     """
     第一人称行走效果 - 模拟 POV 镜头移动
     """
-    import math
-    
     def walk_position(t):
         w, h = clip.size
         progress = t / duration
-        
-        # 向前推进
-        zoom = 1.0 + 0.1 * progress
-        
-        # 轻微的左右摇摆（模拟步伐）
         sway = math.sin(progress * 4 * math.pi) * 0.01 * w
-        
-        # 上下起伏（模拟呼吸/步伐）
         bob = math.sin(progress * 8 * math.pi) * 0.005 * h
-        
         return (sway, bob)
     
     def walk_resize(t):
@@ -295,17 +266,12 @@ def apply_gentle_float(clip, duration):
     """
     轻柔漂浮效果 - 适合生活类、治愈类内容
     """
-    import math
-    
     def float_position(t):
         w, h = clip.size
         progress = t / duration
-        
-        # 缓慢的圆形运动
         radius = 0.02
         x = math.cos(progress * 2 * math.pi) * radius * w
         y = math.sin(progress * 2 * math.pi) * radius * h * 0.5
-        
         return (x, y)
     
     def gentle_zoom(t):
@@ -320,11 +286,8 @@ def apply_meme_zoom(clip, duration):
     """
     Meme 风格快速缩放 - 强调冲击力
     """
-    import math
-    
     def meme_resize(t):
         progress = t / duration
-        # 快速放大然后稳定
         if progress < 0.1:
             return 1.0 + 0.1 * (progress / 0.1)
         else:
@@ -344,9 +307,6 @@ def apply_text_entrance(txt_clip, duration):
     """
     字幕动态入场效果
     """
-    import math
-    
-    # 字幕从下方滑入
     def slide_up(t):
         if t < 0.3:
             progress = t / 0.3
@@ -354,7 +314,6 @@ def apply_text_entrance(txt_clip, duration):
             return ('center', 0.75 + 0.05 * (1 - ease))
         return ('center', 0.75)
     
-    # 同时淡入
     txt_clip = txt_clip.set_position(slide_up)
     txt_clip = txt_clip.fadein(0.3)
     
@@ -376,19 +335,14 @@ def add_scene_transitions(clips, transition_type='fade', transition_duration=0.5
     if len(clips) <= 1:
         return clips
     
-    from moviepy.editor import concatenate_videoclips
-    
     result_clips = []
     
     for i, clip in enumerate(clips):
         if i == 0:
-            # 第一个片段只添加淡出
             result_clips.append(clip.fadeout(transition_duration))
         elif i == len(clips) - 1:
-            # 最后一个片段只添加淡入
             result_clips.append(clip.fadein(transition_duration))
         else:
-            # 中间片段添加淡入淡出
             result_clips.append(clip.fadein(transition_duration).fadeout(transition_duration))
     
     return result_clips
