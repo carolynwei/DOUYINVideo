@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 视频引擎模块：处理视频渲染、TTS合成、BGM混音等功能
-确保所有中文字符正确显示
+VideoTaxi 片段式情绪引擎 (Segmented Emotional Engine)
+确保所有中文字符正确显社
 """
 
 import os
@@ -18,7 +19,63 @@ import sys
 import random
 from PIL import Image, ImageDraw, ImageFont
 import streamlit as st
-from moviepy.editor import AudioFileClip, ImageClip, ColorClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip, afx
+from moviepy.editor import AudioFileClip, ImageClip, ColorClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip, afx, concatenate_audioclips
+
+# 🎭 情绪-参数路由表 (Emotion-Parameter Routing Table)
+# 基于“语义-情绪映射”的工业化架构
+VIBE_ROUTING_TABLE = {
+    # 冷静类
+    "cold_question": {
+        "desc": "沉稳/冷淡/质疑",
+        "edge_params": {"rate": "-5%", "pitch": "0%", "volume": "+0%"},
+        "volc_voice": "zh_male_junlangnanyou_emo_v2_mars_bigtts",  # 俊朗男友-冷静
+    },
+    "deep_mystery": {
+        "desc": "悬疑/低沉/神秘",
+        "edge_params": {"rate": "-10%", "pitch": "-10%", "volume": "-5%"},
+        "volc_voice": "zh_male_junlangnanyou_emo_v2_mars_bigtts",
+    },
+    
+    # 兴奋类
+    "excited_announce": {
+        "desc": "兴奋/宣告/惊喜",
+        "edge_params": {"rate": "+10%", "pitch": "+15%", "volume": "+10%"},
+        "volc_voice": "zh_female_tianmeixiaomei_emo_moon_bigtts",  # 甜心小妹-兴奋
+    },
+    
+    # 愤怒类
+    "angry_shout": {
+        "desc": "嘶吼/愤怒/爆发",
+        "edge_params": {"rate": "+15%", "pitch": "+10%", "volume": "+20%"},
+        "volc_voice": "zh_male_jingqiangkanye_emo_v2_mars_bigtts",  # 京腔侃爷-暴躁
+    },
+    "fierce_warning": {
+        "desc": "猛烈/警告/喉哧",
+        "edge_params": {"rate": "+10%", "pitch": "+5%", "volume": "+15%"},
+        "volc_voice": "zh_male_jingqiangkanye_emo_v2_mars_bigtts",
+    },
+    
+    # 崩溃类
+    "sad_sigh": {
+        "desc": "崩溃/叹息/委屈",
+        "edge_params": {"rate": "-15%", "pitch": "-15%", "volume": "-10%"},
+        "volc_voice": "zh_male_junlangnanyou_emo_v2_mars_bigtts",
+    },
+    
+    # 嘲讽类
+    "sarcastic_mock": {
+        "desc": "嘲讽/嘲笑/轻蔑",
+        "edge_params": {"rate": "+5%", "pitch": "-5%", "volume": "+5%"},
+        "volc_voice": "zh_male_jingqiangkanye_emo_v2_mars_bigtts",
+    },
+    
+    # 中性类（默认）
+    "neutral_narrate": {
+        "desc": "中性/平静/叙述",
+        "edge_params": {"rate": "+0%", "pitch": "+0%", "volume": "+0%"},
+        "volc_voice": "zh_male_junlangnanyou_emo_v2_mars_bigtts",
+    },
+}
 
 # 🔑 字体路径配置：多级降级策略确保100%可用
 def get_font_path():
@@ -296,6 +353,146 @@ async def text_to_mp3(text, filename, voice_id="zh-CN-YunxiNeural"):
     
     st.error(f"❌ 音频生成失败（3次重试后）: {filename}")
     return False
+
+# 🎬 片段式情绪引擎 (Segmented Emotional Engine)
+async def synthesize_emotional_segment(text, vibe, output_file, use_volcengine=False):
+    """
+    根据情绪标签合成单个音频片段
+    
+    Args:
+        text: 文案内容
+        vibe: 情绪标签（如 "cold_question", "angry_shout"）
+        output_file: 输出文件路径
+        use_volcengine: 是否使用火山引擎（默认False使用Edge TTS）
+    
+    Returns:
+        bool: 是否成功
+    """
+    # 获取情绪参数，如果找不到则使用默认
+    vibe_config = VIBE_ROUTING_TABLE.get(vibe, VIBE_ROUTING_TABLE["neutral_narrate"])
+    
+    if use_volcengine:
+        # 使用火山引擎：直接调用，通过音色切换实现情绪
+        voice_id = vibe_config["volc_voice"]
+        success = call_volcengine_tts(text, voice_id, output_file)
+        return success
+    else:
+        # 使用 Edge TTS：通过参数控制
+        params = vibe_config["edge_params"]
+        try:
+            communicate = edge_tts.Communicate(
+                text, 
+                "zh-CN-YunxiNeural",  # 基础音色
+                rate=params["rate"],
+                pitch=params["pitch"],
+                volume=params["volume"]
+            )
+            await communicate.save(output_file)
+            
+            if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+                return True
+            else:
+                return False
+        except Exception as e:
+            st.warning(f"⚠️ 情绪片段 [{vibe}] 生成失败: {e}")
+            return False
+
+async def synthesize_emotional_segments_parallel(segments, use_volcengine=False):
+    """
+    并行合成多个情绪片段（核心加速逻辑）
+    
+    Args:
+        segments: 片段列表 [{"text": "...", "vibe": "..."}, ...]
+        use_volcengine: 是否使用火山引擎
+    
+    Returns:
+        list: 成功生成的音频文件路径列表
+    """
+    tasks = []
+    output_files = []
+    
+    for i, seg in enumerate(segments):
+        output_file = f"temp_emotional_segment_{i}_{uuid.uuid4().hex[:8]}.mp3"
+        output_files.append(output_file)
+        
+        # 创建并行任务
+        task = synthesize_emotional_segment(
+            text=seg.get("text", ""),
+            vibe=seg.get("vibe", "neutral_narrate"),
+            output_file=output_file,
+            use_volcengine=use_volcengine
+        )
+        tasks.append(task)
+    
+    # 🚀 关键：并行执行所有任务（5个片段 = 1个片段的时间）
+    st.info(f"🎬 并行合成 {len(segments)} 个情绪片段...")
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # 验证结果
+    success_files = []
+    for i, (result, file) in enumerate(zip(results, output_files)):
+        if result is True and os.path.exists(file):
+            success_files.append(file)
+            st.success(f"✅ 片殶 {i+1}/{len(segments)}: {segments[i].get('vibe', 'neutral')} - 成功")
+        else:
+            st.error(f"❌ 片殶 {i+1}/{len(segments)}: 失败")
+            success_files.append(None)
+    
+    return success_files
+
+def concatenate_audio_segments_with_breath(audio_files, output_path, breath_duration=0.2):
+    """
+    拼接音频片段，并在接缝处插入呼吸停顿（增强真人感）
+    
+    Args:
+        audio_files: 音频文件路径列表
+        output_path: 输出文件路径
+        breath_duration: 呼吸停顿时长（秒）
+    
+    Returns:
+        str: 输出文件路径，失败返回 None
+    """
+    try:
+        # 加载所有有效的音频片殶
+        clips = []
+        for i, file in enumerate(audio_files):
+            if file and os.path.exists(file):
+                try:
+                    clip = AudioFileClip(file)
+                    clips.append(clip)
+                    
+                    # 在片殶之间插入静音（模拟呼吸）
+                    if i < len(audio_files) - 1:  # 不在最后一个后面加
+                        # 创建静音片殶
+                        silence = AudioFileClip(file).volumex(0).subclip(0, breath_duration)
+                        clips.append(silence)
+                except Exception as e:
+                    st.warning(f"⚠️ 片殶 {i+1} 加载失败: {e}")
+        
+        if not clips:
+            st.error("❌ 没有有效的音频片殶")
+            return None
+        
+        # 🎵 拼接所有片殶
+        final_audio = concatenate_audioclips(clips)
+        final_audio.write_audiofile(output_path, codec='libmp3lame')
+        
+        # 清理临时文件
+        for clip in clips:
+            clip.close()
+        for file in audio_files:
+            if file and os.path.exists(file):
+                try:
+                    os.remove(file)
+                except:
+                    pass
+        
+        st.success(f"✅ 音频拼接完成，共 {len(clips)} 个片殶")
+        return output_path
+        
+    except Exception as e:
+        st.error(f"❌ 音频拼接失败: {e}")
+        return None
 
 def generate_all_audios_sync(scenes_data, voice_id="zh-CN-YunxiNeural"):
     """串行生成所有分镜配音"""
