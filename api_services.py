@@ -144,32 +144,47 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
     """
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1".strip())
     
-    # 1️⃣ 风格定义库（动态插件）
+    # 1️⃣ 风格定义库（动态插件）- 升级版：添加影像美学插件
     STYLE_CONFIGS = {
         "🗡️ 认知刺客流（冲击力+优越感）": {
             "tone": "冲击、扎心、人间清醒。目标：摧毁旧认知，建立高阶真相。语言：短句、倒装、高频反问。",
             "hook": "前3秒必须是反常识金句，直接否定普遍认知（“你以为…其实…”逻辑）",
-            "visual": "Sam Kolder 风格，高对比度，冷色调，极简主体，锐利线条"
+            "visual_base": "Sam Kolder 风格，高对比度，冷色调，极简主体，锐利线条",
+            "visual_rules": "视觉：高冷电影感。镜头：多用中远景切换特写，稳定器运镜。色调：深邃冷色调，强调光影明暗对比。参考：Sean Tucker 街头人文感 + Blade Runner 2049 视觉风格。",
+            "shot_keywords": "Cinematic, Deep shadows, Chiaroscuro lighting, Cold color grading, Minimalist composition, Sharp lines, Medium shot to extreme close-up transition",
+            "bgm_style": "深沉鼓点，低频Bass，紧迫感氛围音乐（参考：Hans Zimmer 风格）"
         },
         "👍 听勝/养成系（互动率04+评论爆炸）": {
             "tone": "真诚、低姿态、蜕变感。目标：激发好为人师欲。语言：口语化、求助式、带评论区互动点。",
             "hook": "以“求助”或“反差展示”开场（“上次你们说我XX，我改了…”）",
-            "visual": "生活化场景，手机第一人称拍摄，生动表情，真实感强"
+            "visual_base": "生活化场景，手机第一人称拍摄，生动表情，真实感强",
+            "visual_rules": "视觉：生活化、Vlog感。镜头：手持摇晃，画面粗糙但真实，适当焦外。色调：自然光，略带杂乱的生活背景。参考：Brandon Li 纪实风格 + Casey Neistat Vlog 美学。",
+            "shot_keywords": "Handheld camera, Vlog aesthetic, Natural lighting, Shallow depth of field, Casual background, Authentic expressions, Slightly shaky footage",
+            "bgm_style": "温暖原声吉他，轻快钢琴，治愈系背景Lofi（参考：Indie Folk 风格）"
         },
         "🎬 POV沉浸流（第一人称+代入感）": {
             "tone": "压迫感、代入感、共情。目标：打破屏幕隔阙。语言：大量使用‘你’，强调感官细节。",
             "hook": "用“如果你是…”或“想象一下你正在…”直接把观众拉入场景",
-            "visual": "Brandon Li 风格，第一人称视角，近距离特写，焦虑感或压迫感氛围"
+            "visual_base": "Brandon Li 风格，第一人称视角，近距离特写，焦虑感或压迫感氛围",
+            "visual_rules": "视觉：第一人称视角。镜头：超广角，模拟人眼，画面边缘有轻微畸变和动态模糊。参考：POV 极限运动运镜 + FPS 游戏视角。",
+            "shot_keywords": "First-person POV, Ultra-wide angle, Motion blur, Edge distortion, Immersive perspective, Claustrophobic framing, Dynamic movement",
+            "bgm_style": "紧张悬疑音效，心跳声，呼吸声，环境音增强沉浸感（参考：Horror Game OST）"
         },
         "🔥 情绪宣泄流（极致反转+发疯文学）": {
             "tone": "极端、爽感、发疯文学。目标：提供情绪出口。语言：情绪波动剧烈，使用夸张动词。",
             "hook": "用极端情绪词开场（“我真的忠了！”“给我笑死了！”），不讲道理只讲情",
-            "visual": "Daniel Schiffer 风格，夹杂快闪切换，夏张表情，高饱和度色彩"
+            "visual_base": "Daniel Schiffer 风格，夹杂快闪切换，夏张表情，高饱和度色彩",
+            "visual_rules": "视觉：极具张力和压迫感。镜头：极近特写（眼睛/嘴巴），快速推拉镜头，摇晃镜头增强混乱感。色调：高饱和度，红黑撞色。参考：电影级的特写剪辑 + Edgar Wright 快速剪辑风格。",
+            "shot_keywords": "Extreme close-up, Shaky cam, Rapid zoom, High saturation, Red and black color palette, Intense facial expressions, Quick cuts",
+            "bgm_style": "崩坏电子乐，混沌鼓点，尖叫声效，极具爆发力（参考：Trap/Dubstep 风格）"
         },
         "🐱 Meme抗象流（低成本+病毒传播）": {
             "tone": "幽默、病毒、解压。目标：极低门槛传播。语言：洗脑棗、配合简单视觉节奏。",
             "hook": "用网络棗或流行Emoji开场，降低接收门槛",
-            "visual": "简单Meme图配文，猫狗表情包，低成本动画风，洗脑BGM"
+            "visual_base": "简单Meme图配文，猫狗表情包，低成本动画风，洗脑BGM",
+            "visual_rules": "视觉：扁平化、高饱和。镜头：固定机位，主体居中，简单清晰。色调：明亮通透，多巴胺配色。参考：表情包美学 + TikTok 简易动画。",
+            "shot_keywords": "Flat design, High saturation, Pop colors, Centered composition, Simple background, Meme template style, Clean and bright",
+            "bgm_style": "洗脑神曲，魔性循环，高频电音，搭配特效音（参考：Vine/TikTok Viral Sounds）"
         }
     }
     
@@ -185,8 +200,14 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
 【Hook 公式】：
 {style_config['hook']}
 
-【视觉审美】：
-{style_config['visual']}
+【🎬 强制视觉分镜约束】：
+必须严格按照以下视觉规则编写生图 Prompt：
+{style_config['visual_rules']}
+
+要求：生成的图像 Prompt 必须包含：
+- 镜头角度（Shot Type）：如 Medium shot, Close-up, POV 等
+- 光影（Lighting）：如 Cinematic lighting, Natural light, Deep shadows 等
+- 视觉参考：{style_config['shot_keywords']}
 
 【通用爆款法则】：
 1. 黄金前3秒：直接切入冲突，禁止铺垫
@@ -196,14 +217,15 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
 
 【🔍 强制自检环节】：
 在输出JSON前，你必须进行内部审计，如有违反立刻重写：
-1. **搜寻并删除**：查找是否存在"其实、那么、总之、让我们、大家好"等AI废话，一律删掉
-2. **锐化动词**：检查前3秒是否有"很、非常、比较"等虚词，必须替换为具体动作
+1. **搜寻并删除**：查找是否存在“其实、那么、总之、让我们、大家好”等AI废话，一律删掉
+2. **锐化动词**：检查前3秒是否有“很、非常、比较”等虚词，必须替换为具体动作
 3. **逻辑对齐**：检查结尾是否在讲大道理，如果是，强制改为反问句或悬念钩子
 4. **真实感检查**：确保语气像个活人，带点方言感或江湖气，不要像AI给人科普
+5. **视觉检查**：确认每个 image_prompt 是否包含了镜头角度、光影和视觉参考，必须符合【视觉约束】
 
 【输出要求】：
 必须严格输出JSON数组，包含4-6个分镜。格式：
-[{{"narration": "口播文案（经过自检的刺客文案）", "image_prompt": "English prompt, {style_config['visual']}, cinematic lighting"}}]
+[{{"narration": "口播文案（经过自检的刺客文案）", "image_prompt": "English prompt with {style_config['shot_keywords']}, cinematic lighting, detailed scene"}}]
 
 绝对不要输出Markdown标记（如 ```json）或其他解释性文字。"""
     
