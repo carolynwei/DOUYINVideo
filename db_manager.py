@@ -30,6 +30,20 @@ def get_or_create_user(user_id):
     """获取用户信息，如果是新用户则创建（初始积分为0，需签到获得）"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+    
+    # 确保表结构最新（添加新列）
+    try:
+        c.execute("SELECT total_check_ins FROM users LIMIT 1")
+    except sqlite3.OperationalError:
+        c.execute("ALTER TABLE users ADD COLUMN total_check_ins INTEGER DEFAULT 0")
+        conn.commit()
+    
+    try:
+        c.execute("SELECT last_check_in_date FROM users LIMIT 1")
+    except sqlite3.OperationalError:
+        c.execute("ALTER TABLE users ADD COLUMN last_check_in_date DATE")
+        conn.commit()
+    
     c.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
     user = c.fetchone()
     
@@ -39,6 +53,21 @@ def get_or_create_user(user_id):
         c.execute("INSERT INTO users (user_id, credits, last_check_in_date, consecutive_days, total_check_ins) VALUES (?, 0, NULL, 0, 0)", (user_id,))
         conn.commit()
         user = (user_id, 0, None, 0, 0)
+    else:
+        # 处理旧数据：如果列数不足，补充默认值
+        if len(user) < 5:
+            # 旧数据结构：user_id, credits, last_login_date, consecutive_days
+            # 需要迁移到新结构
+            old_last_login = user[2] if user[2] else None
+            c.execute("""
+                UPDATE users 
+                SET last_check_in_date = ?, total_check_ins = 0 
+                WHERE user_id = ?
+            """, (old_last_login, user_id))
+            conn.commit()
+            # 重新查询获取完整数据
+            c.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
+            user = c.fetchone()
         
     conn.close()
     # 返回格式: {'user_id': user[0], 'credits': user[1], ...}
@@ -46,8 +75,8 @@ def get_or_create_user(user_id):
         "user_id": user[0], 
         "credits": user[1], 
         "last_check_in_date": user[2], 
-        "consecutive_days": user[3],
-        "total_check_ins": user[4] if len(user) > 4 else 0
+        "consecutive_days": user[3] if user[3] else 0,
+        "total_check_ins": user[4] if len(user) > 4 and user[4] else 0
     }
 
 def check_in(user_id):
