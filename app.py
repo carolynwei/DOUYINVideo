@@ -212,6 +212,107 @@ def inject_custom_css(theme='dark'):
     hr {{
         border-color: {colors['border']};
     }}
+    
+    /* 16. 下拉框选项 */
+    [data-baseweb="popover"] {{
+        background-color: {colors['bg_secondary']} !important;
+    }}
+    
+    [data-baseweb="select"] > div {{
+        background-color: {colors['input_bg']} !important;
+        border-color: {colors['border']} !important;
+        color: {colors['text']} !important;
+    }}
+    
+    /* 17. 数据编辑器 */
+    .stDataEditor {{
+        background-color: {colors['bg_secondary']};
+    }}
+    
+    /* 18. 按钮primary类型 */
+    .stButton>button[kind="primary"] {{
+        background-color: {colors['accent']} !important;
+        color: white !important;
+        border: none !important;
+    }}
+    
+    .stButton>button[kind="primary"]:hover {{
+        background-color: #CC2828 !important;
+        box-shadow: 0 0 25px rgba(255, 49, 49, 0.6);
+    }}
+    
+    /* 19. Success/Error/Warning/Info 消息框 */
+    .stSuccess, .stError, .stWarning, .stInfo {{
+        border-radius: 8px;
+        border: 1px solid {colors['border']};
+    }}
+    
+    /* 20. Spinner 加载动画 */
+    .stSpinner > div {{
+        border-top-color: {colors['accent']} !important;
+    }}
+    
+    /* 21. Progress Bar 进度条 */
+    .stProgress > div > div {{
+        background-color: {colors['accent']} !important;
+    }}
+    
+    /* 22. Toast 消息 */
+    [data-testid="stToast"] {{
+        background-color: {colors['bg_secondary']} !important;
+        border: 1px solid {colors['border']} !important;
+        color: {colors['text']} !important;
+    }}
+    
+    /* 23. Status 状态容器 */
+    [data-testid="stStatus"] {{
+        background-color: {colors['bg_secondary']} !important;
+        border: 1px solid {colors['border']} !important;
+    }}
+    
+    /* 24. Code 代码块 */
+    code {{
+        background-color: {colors['bg_secondary']} !important;
+        color: {colors['text']} !important;
+        border: 1px solid {colors['border']};
+    }}
+    
+    /* 25. 数字输入框 */
+    .stNumberInput input {{
+        background-color: {colors['input_bg']} !important;
+        border: 1px solid {colors['border']} !important;
+        color: {colors['text']} !important;
+    }}
+    
+    /* 26. Slider 滑块 */
+    .stSlider {{
+        color: {colors['text']} !important;
+    }}
+    
+    /* 27. File Uploader 文件上传 */
+    [data-testid="stFileUploader"] {{
+        background-color: {colors['bg_secondary']};
+        border: 1px solid {colors['border']};
+    }}
+    
+    /* 28. Download Button 下载按钮 */
+    .stDownloadButton > button {{
+        background-color: {colors['bg_secondary']} !important;
+        color: {colors['text']} !important;
+        border: 1px solid {colors['border']} !important;
+    }}
+    
+    /* 29. 侧边栏分割线 */
+    [data-testid="stSidebar"] hr {{
+        border-color: {colors['border']};
+    }}
+    
+    /* 30. 侧边栏标题 */
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3 {{
+        color: {colors['text']} !important;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
