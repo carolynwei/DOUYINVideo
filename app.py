@@ -931,7 +931,13 @@ with tab_video:
                         st.image("https://via.placeholder.com/300x533/1a1a1a/FF3131?text=Scene+" + str(idx+1), 
                                 caption=f"🎬 分镜 {idx+1}")
                         with st.expander("📝 查看文案"):
-                            st.write(scene.get('narration', '')[:50] + "...")
+                            # 🔥 修复：确保 narration 是字符串类型
+                            narration = scene.get('narration', '')
+                            if narration and isinstance(narration, str):
+                                preview = narration[:50] + "..." if len(narration) > 50 else narration
+                                st.write(preview)
+                            else:
+                                st.write("⚠️ 暂无文案")
     else:
         st.warning("👉 请先在【剧本构思】Tab 生成剧本")
 
