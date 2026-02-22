@@ -274,24 +274,56 @@ async def text_to_mp3(text, filename, voice_id="zh-CN-YunxiNeural"):
             # 注意：Edge TTS原生支持SSML，直接传入包含<prosody>的文本即可
             communicate = edge_tts.Communicate(text, voice_id, rate="+10%")
             await communicate.save(filename)
-            return True
+            
+            # 🔥 新增：验证文件是否生成成功
+            if os.path.exists(filename) and os.path.getsize(filename) > 0:
+                return True
+            else:
+                st.error(f"❌ 音频文件生成失败或为空: {filename}")
+                return False
+                
         except Exception as e:
             st.warning(f"TTS 尝试 {attempt+1}/3 失败: {e}")
             await asyncio.sleep(2)
+    
+    st.error(f"❌ 音频生成失败（3次重试后）: {filename}")
     return False
 
 def generate_all_audios_sync(scenes_data, voice_id="zh-CN-YunxiNeural"):
     """串行生成所有分镜配音"""
     audio_files = []
+    failed_count = 0
+    
     for i, scene in enumerate(scenes_data):
         audio_file = f"temp_audio_{i}.mp3"
-        st.toast(f"🎙️ AI 配音生成中... {i+1}/{len(scenes_data)}")
-        if asyncio.run(text_to_mp3(scene['narration'], audio_file, voice_id)):
-            audio_files.append(audio_file)
-        else:
-            # 失败兜底逻辑
+        st.toast(f"🎹️ AI 配音生成中... {i+1}/{len(scenes_data)}")
+        
+        # 🔥 新增：显示当前处理的文本（前50个字符）
+        narration_preview = scene['narration'][:50] + "..." if len(scene['narration']) > 50 else scene['narration']
+        st.caption(f"📝 正在处理: {narration_preview}")
+        
+        try:
+            success = asyncio.run(text_to_mp3(scene['narration'], audio_file, voice_id))
+            if success:
+                audio_files.append(audio_file)
+                st.success(f"✅ 分镜 {i+1} 音频生成成功")
+            else:
+                audio_files.append(None)
+                failed_count += 1
+                st.error(f"❌ 分镜 {i+1} 音频生成失败")
+        except Exception as e:
             audio_files.append(None)
+            failed_count += 1
+            st.error(f"❌ 分镜 {i+1} 音频生成异常: {e}")
+        
         asyncio.run(asyncio.sleep(0.5))
+    
+    # 🔥 新增：显示总结
+    if failed_count > 0:
+        st.warning(f"⚠️ 音频生成完成，但有 {failed_count}/{len(scenes_data)} 个失败")
+    else:
+        st.success(f"✅ 所有 {len(scenes_data)} 个音频生成成功！")
+    
     return audio_files
 
 def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=None, voice_id="zh-CN-YunxiNeural", style_name=None):
@@ -315,18 +347,32 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
     success_count = sum(1 for p in image_paths if p)
     st.write(f"📸 成功生成图片数量: {success_count}/{len(image_paths)}")
     
+    # 🔍 新增：调试音频文件状态
+    audio_success_count = sum(1 for a in audio_files if a and os.path.exists(a))
+    st.write(f"🎹️ 成功生成音频数量: {audio_success_count}/{len(audio_files)}")
+    
+    # 🔥 关键修复：如果所有音频都失败，直接返回错误
+    if audio_success_count == 0:
+        st.error("❌ 所有音频生成失败！请检查网络连接或TTS配置")
+        return False
+    
     scene_clips = []
     temp_files = []
 
     # 2. 逐分镜合成
     for i, scene in enumerate(scenes_data):
-        if not audio_files[i]: 
-            st.warning(f"⚠️ 分镜 {i+1} 音频生成失败，跳过")
+        # 🔥 修复：先检查audio_files[i]是否为None，再检查文件是否存在
+        if not audio_files[i] or not os.path.exists(audio_files[i]): 
+            st.warning(f"⚠️ 分镜 {i+1} 音频生成失败或文件不存在，跳过")
             continue
             
-        audio_clip = AudioFileClip(audio_files[i])
-        dur = audio_clip.duration
-        temp_files.append(audio_files[i])
+        try:
+            audio_clip = AudioFileClip(audio_files[i])
+            dur = audio_clip.duration
+            temp_files.append(audio_files[i])
+        except Exception as e:
+            st.error(f"❌ 分镜 {i+1} 音频加载失败: {e}")
+            continue
         
         # 画面逻辑：AI绘画 > 黑屏占位
         if image_paths[i]:
