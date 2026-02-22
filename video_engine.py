@@ -7,6 +7,8 @@ import requests
 import json
 import base64
 import uuid
+import subprocess
+import sys
 from PIL import Image, ImageDraw, ImageFont
 import streamlit as st
 from moviepy.editor import AudioFileClip, ImageClip, ColorClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip
@@ -109,7 +111,8 @@ def create_subtitle_image(text, width=1080, height=400, fontsize=70):
 
 def call_volcengine_tts(text, voice_id, output_path):
     """
-    调用火山引擎 TTS API 生成音频
+    通过调用官方 V3 bidirection.py 脚本来生成豆包大模型音频
+    支持 WebSocket 流式传输，适用于豆包语音合成模型 2.0
     """
     try:
         # 1. 安全获取鉴权信息
@@ -120,64 +123,51 @@ def call_volcengine_tts(text, voice_id, output_path):
             # 如果没有配置火山引擎，回退到 Edge TTS
             return False
         
-        cluster = "volcano_tts"  # 官方默认的 TTS 集群名称
+        # 2. 官方脚本路径
+        script_path = os.path.join(os.path.dirname(__file__), "examples", "volcengine", "bidirection.py")
         
-        # 火山引擎 TTS API 的请求地址
-        url = "https://openspeech.bytedance.com/api/v1/tts"
+        if not os.path.exists(script_path):
+            print(f"❌ 找不到火山引擎 V3 脚本: {script_path}")
+            return False
         
-        # 2. 构造请求头
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
+        print(f"🚀 正在调用豆包语音合成大模型: {voice_id}...")
         
-        # 3. 构造请求体
-        payload = {
-            "app": {
-                "appid": appid,
-                "token": access_token,
-                "cluster": cluster
-            },
-            "user": {
-                "uid": "video_generator_user"
-            },
-            "audio": {
-                "voice_type": voice_id,
-                "encoding": "mp3",
-                "speed_ratio": 1.1,     # 语速略快一点，更符合短视频节奏
-                "volume_ratio": 1.2,    # 音量提升一点
-                "pitch_ratio": 1.0
-            },
-            "request": {
-                "reqid": str(uuid.uuid4()),
-                "text": text,
-                "text_type": "plain",
-                "operation": "query"
-            }
-        }
+        # 3. 构建命令行指令
+        command = [
+            sys.executable,  # 使用当前 Python 解释器
+            script_path,
+            "--appid", appid,
+            "--access_token", access_token,
+            "--voice_type", voice_id,
+            "--text", text,
+            "--encoding", "mp3",
+            "--output", output_path  # 指定输出路径
+        ]
         
-        # 4. 发送 POST 请求
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        # 4. 执行脚本
+        result = subprocess.run(
+            command, 
+            check=True, 
+            capture_output=True, 
+            text=True,
+            timeout=60  # 60秒超时
+        )
         
-        # 5. 处理响应结果
-        if response.status_code == 200:
-            resp_json = response.json()
-            if resp_json.get("code") == 3000:  # 3000 是火山引擎 API 成功的状态码
-                # 提取 base64 编码的音频数据并解码
-                audio_data = base64.b64decode(resp_json["data"])
-                
-                # 将二进制音频写入文件
-                with open(output_path, "wb") as f:
-                    f.write(audio_data)
-                return True
-            else:
-                error_msg = resp_json.get('message', '未知错误')
-                print(f"❌ 火山引擎 TTS 业务报错: {error_msg}")
-                return False
+        # 5. 验证输出文件
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            print(f"✅ 豆包大模型音频流接收完毕！音频已保存至: {output_path}")
+            return True
         else:
-            print(f"❌ 网络请求失败，HTTP 状态码: {response.status_code}")
+            print(f"❌ 输出文件未生成或为空: {output_path}")
             return False
             
+    except subprocess.TimeoutExpired:
+        print("❌ 火山引擎 TTS 超时（60秒）")
+        return False
+    except subprocess.CalledProcessError as e:
+        print(f"❌ 火山大模型合成失败，官方脚本报错信息：")
+        print(e.stderr)
+        return False
     except Exception as e:
         print(f"❌ 火山引擎 TTS 调用异常: {e}")
         return False
