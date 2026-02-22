@@ -60,7 +60,7 @@ def init_session_state():
     if 'voice_id' not in st.session_state:
         st.session_state.voice_id = "zh-CN-YunxiNeural"
     if 'script_mode' not in st.session_state:
-        st.session_state.script_mode = "🗡️ 认知刺客流（冲击力+优越感）"
+        st.session_state.script_mode = "认知刺客 - 冲击力+优越感"
     if 'model_id' not in st.session_state:
         st.session_state.model_id = "deepseek-chat"
     if 'model_cost' not in st.session_state:
@@ -210,19 +210,166 @@ def main():
     # 渲染侧边栏，获取用户ID
     user_id = render_sidebar(api_keys)
     
-    # 主内容区 - 三态分离工作流
+    # 主内容区 - 三态分离工作流（美化版）
     st.markdown("""
-    <div style="margin-bottom: 10px;">
-        <span style="font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 2px;">
-            VideoTaxi 三态工作流
-        </span>
+    <div style="
+        background: linear-gradient(135deg, rgba(255,49,49,0.08) 0%, rgba(13,17,23,0.95) 50%, rgba(255,49,49,0.05) 100%);
+        border-radius: 16px;
+        padding: 20px 25px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(255,49,49,0.15);
+        position: relative;
+        overflow: hidden;
+    ">
+        <!-- 装饰性光效 -->
+        <div style="
+            position: absolute;
+            top: -50%;
+            left: -10%;
+            width: 30%;
+            height: 200%;
+            background: linear-gradient(90deg, transparent, rgba(255,49,49,0.1), transparent);
+            transform: rotate(15deg);
+            pointer-events: none;
+        "></div>
+        
+        <!-- 标题区域 -->
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 8px;">
+            <div style="
+                width: 40px;
+                height: 40px;
+                background: linear-gradient(135deg, #FF3131 0%, #8b0000 100%);
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                box-shadow: 0 4px 15px rgba(255,49,49,0.4);
+            ">🚖</div>
+            <div>
+                <div style="
+                    font-size: 18px;
+                    font-weight: 800;
+                    color: #ffffff;
+                    letter-spacing: 0.5px;
+                ">VideoTaxi 三态工作流</div>
+                <div style="
+                    font-size: 12px;
+                    color: #8b949e;
+                    margin-top: 2px;
+                ">构思 → 生产 → 资产 | 让创意7x24小时为你跑单</div>
+            </div>
+        </div>
+        
+        <!-- 进度指示器 -->
+        <div style="
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 15px;
+        ">
+            <!-- Step 1 -->
+            <div style="
+                flex: 1;
+                background: linear-gradient(90deg, rgba(255,49,49,0.3) 0%, rgba(255,49,49,0.1) 100%);
+                height: 4px;
+                border-radius: 2px;
+                position: relative;
+            ">
+                <div style="
+                    position: absolute;
+                    left: 0;
+                    top: -6px;
+                    width: 16px;
+                    height: 16px;
+                    background: #FF3131;
+                    border-radius: 50%;
+                    border: 3px solid #0d1117;
+                    box-shadow: 0 0 10px rgba(255,49,49,0.5);
+                "></div>
+                <div style="
+                    position: absolute;
+                    left: -5px;
+                    top: 18px;
+                    font-size: 10px;
+                    color: #FF3131;
+                    font-weight: 600;
+                    white-space: nowrap;
+                ">构思态</div>
+            </div>
+            
+            <!-- Arrow -->
+            <div style="color: #8b949e; font-size: 14px;">→</div>
+            
+            <!-- Step 2 -->
+            <div style="
+                flex: 1;
+                background: rgba(48,54,61,0.5);
+                height: 4px;
+                border-radius: 2px;
+                position: relative;
+            ">
+                <div style="
+                    position: absolute;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    top: -6px;
+                    width: 16px;
+                    height: 16px;
+                    background: #30363d;
+                    border-radius: 50%;
+                    border: 3px solid #0d1117;
+                "></div>
+                <div style="
+                    position: absolute;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    top: 18px;
+                    font-size: 10px;
+                    color: #8b949e;
+                    white-space: nowrap;
+                ">生产态</div>
+            </div>
+            
+            <!-- Arrow -->
+            <div style="color: #8b949e; font-size: 14px;">→</div>
+            
+            <!-- Step 3 -->
+            <div style="
+                flex: 1;
+                background: rgba(48,54,61,0.5);
+                height: 4px;
+                border-radius: 2px;
+                position: relative;
+            ">
+                <div style="
+                    position: absolute;
+                    right: 0;
+                    top: -6px;
+                    width: 16px;
+                    height: 16px;
+                    background: #30363d;
+                    border-radius: 50%;
+                    border: 3px solid #0d1117;
+                "></div>
+                <div style="
+                    position: absolute;
+                    right: -5px;
+                    top: 18px;
+                    font-size: 10px;
+                    color: #8b949e;
+                    white-space: nowrap;
+                ">资产态</div>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
+    # Tab 样式美化 - 使用更现代的标签设计
     tab_script, tab_video, tab_assets = st.tabs([
-        "🔥 构思态：写剧本", 
-        "🎬 生产态：渲染", 
-        "📂 资产态：管理"
+        "🔥 构思 · 写剧本", 
+        "🎬 生产 · 渲染", 
+        "📂 资产 · 管理"
     ])
     
     with tab_script:

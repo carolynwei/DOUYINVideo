@@ -322,7 +322,7 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
     
     # 1️⃣ 风格定义库（增强版）- VideoTaxi Cinematography v3.0
     STYLE_CONFIGS = {
-        "🗡️ 认知刺客流（冲击力+优越感）": {
+        "认知刺客 - 冲击力+优越感": {
             "tone": "冲击、扎心、人间清醒。目标：摧毁旧认知，建立高阶真相。语言：短句、倒装、高频反问。",
             "hook": "前3秒必须是反常识金句，直接否定普遍认知（你以为...其实...逻辑）",
             "visual_base": "Sam Kolder + Roger Deakins 风格，高对比度，冷色调，电影级光影",
@@ -335,7 +335,7 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
             "default_shot": "close_up",
             "bgm_style": "深沉鼓点，低频Bass，紧迫感氛围音乐（参考：Hans Zimmer 风格）"
         },
-        "👍 听勝/养成系（互动率04+评论爆炸）": {
+        "听劝养成 - 互动率04+评论爆炸": {
             "tone": "真诚、低姿态、蜕变感。目标：激发好为人师欲。语言：口语化、求助式、带评论区互动点。",
             "hook": "以求助或反差展示开场（上次你们说我XX，我改了...）",
             "visual_base": "Brandon Li 纪实风格，生活化场景，手机第一人称拍摄",
@@ -348,7 +348,7 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
             "default_shot": "medium_shot",
             "bgm_style": "温暖原声吉他，轻快钢琴，治愈系背景Lofi（参考：Indie Folk 风格）"
         },
-        "🎬 POV沉浸流（第一人称+代入感）": {
+        "POV沉浸 - 第一人称+代入感": {
             "tone": "压迫感、代入感、共情。目标：打破屏幕隔阙。语言：大量使用'你'，强调感官细节。",
             "hook": "用如果你是...或想象一下你正在...直接把观众拉入场景",
             "visual_base": "POV 极限运动 + FPS 游戏视角，超广角，沉浸式",
@@ -361,9 +361,9 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
             "default_shot": "pov",
             "bgm_style": "紧张悬疑音效，心跳声，呼吸声，环境音增强沉浸感（参考：Horror Game OST）"
         },
-        "🔥 情绪宣泄流（极致反转+发疯文学）": {
+        "情绪宣泄 - 极致反转+发疯文学": {
             "tone": "极端、爽感、发疯文学。目标：提供情绪出口。语言：情绪波动剧烈，使用夸张动词。",
-            "hook": "用极端情绪词开场（我真的忠了！给我笑死了！），不讲道理只讲情",
+            "hook": "用极端情绪词开场（我真的怒了！给我笑死了！），不讲道理只讲情",
             "visual_base": "Daniel Schiffer + Edgar Wright 风格，快闪切换，高饱和度",
             "visual_rules": """视觉：极具张力和压迫感，high energy commercial style。
 镜头：Extreme close-up (eyes/mouth), rapid zoom, shaky cam, quick cuts, Dutch angles。
@@ -374,15 +374,15 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
             "default_shot": "extreme_close_up",
             "bgm_style": "崩坏电子乐，混沌鼓点，尖叫声效，极具爆发力（参考：Trap/Dubstep 风格）"
         },
-        "🐱 Meme抗象流（低成本+病毒传播）": {
-            "tone": "幽默、病毒、解压。目标：极低门槛传播。语言：洗脑棗、配合简单视觉节奏。",
-            "hook": "用网络棗或流行Emoji开场，降低接收门槛",
-            "visual_base": "TikTok  viral style，扁平化，高饱和，表情包美学",
+        "Meme抗象 - 低成本+病毒传播": {
+            "tone": "幽默、病毒、解压。目标：极低门槛传播。语言：洗脑梗、配合简单视觉节奏。",
+            "hook": "用网络梗或流行开场，降低接收门槛",
+            "visual_base": "TikTok viral style，扁平化，高饱和，表情包美学",
             "visual_rules": """视觉：Flat design, pop colors, centered composition, clean and bright。
 镜头：Static camera, centered subject, simple background, eye-level framing。
 光影：Bright even lighting, minimal shadows, vibrant saturation。
 色调：明亮通透，多巴胺配色，高饱和。
-参考：表情包美学 + TikTok  viral style + 简易动画。""",
+参考：表情包美学 + TikTok viral style + 简易动画。""",
             "shot_keywords": "Flat design, Pop colors, Centered composition, Viral meme style, Bright lighting, High saturation",
             "default_shot": "medium_shot",
             "bgm_style": "洗脑神曲，魔性循环，高频电音，搭配特效音（参考：Vine/TikTok Viral Sounds）"

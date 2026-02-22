@@ -490,11 +490,11 @@ def get_bgm_by_style(style_name, video_duration):
     """
     # 风格与文件夹的映射
     style_folder_map = {
-        "🗡️ 认知刺客流（冲击力+优越感）": "assassin",
-        "👍 听勝/养成系（互动率04+评论爆炸）": "growth",
-        "🎬 POV沉浸流（第一人称+代入感）": "pov",
-        "🔥 情绪宣泄流（极致反转+发疯文学）": "venting",
-        "🐱 Meme抗象流（低成本+病毒传播）": "meme"
+        "认知刺客 - 冲击力+优越感": "assassin",
+        "听劝养成 - 互动率04+评论爆炸": "growth",
+        "POV沉浸 - 第一人称+代入感": "pov",
+        "情绪宣泄 - 极致反转+发疯文学": "venting",
+        "Meme抗象 - 低成本+病毒传播": "meme"
     }
     
     folder_name = style_folder_map.get(style_name, "assassin")
@@ -539,11 +539,11 @@ def get_bgm_by_style(style_name, video_duration):
             
         # 核心处理 2：设置 BGM 音量（通常设为 0.08 - 0.25，避免盖过人声）
         volume_map = {
-            "🗡️ 认知刺客流（冲击力+优越感）": 0.15,
-            "👍 听勝/养成系（互动率04+评论爆炸）": 0.08,
-            "🎬 POV沉浸流（第一人称+代入感）": 0.12,
-            "🔥 情绪宣泄流（极致反转+发疯文学）": 0.25,
-            "🐱 Meme抗象流（低成本+病毒传播）": 0.20
+            "认知刺客 - 冲击力+优越感": 0.15,
+            "听劝养成 - 互动率04+评论爆炸": 0.08,
+            "POV沉浸 - 第一人称+代入感": 0.12,
+            "情绪宣泄 - 极致反转+发疯文学": 0.25,
+            "Meme抗象 - 低成本+病毒传播": 0.20
         }
         
         volume = volume_map.get(style_name, 0.1)
