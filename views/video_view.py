@@ -10,8 +10,39 @@ import streamlit as st
 def render_video_view():
     """
     渲染影像工坊 Tab 的完整界面
+    生产态：工业化视频渲染
     """
-    st.info("🎬 **影像工坊**：生成的视频预览和素材下载将显示在这里")
+    # 🎬 工作流状态指示器
+    st.markdown("""
+    <div style="
+        background: linear-gradient(90deg, rgba(255,49,49,0.2) 0%, rgba(255,49,49,0.05) 100%);
+        border-left: 4px solid #FF3131;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        border-radius: 0 8px 8px 0;
+    ">
+        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: 2px;">
+            当前阶段: STEP 2/3
+        </div>
+        <div style="font-size: 18px; font-weight: 700; color: #FF3131; margin-top: 4px;">
+            🎬 生产态 — 工业化渲染
+        </div>
+        <div style="font-size: 13px; color: #8b949e; margin-top: 4px;">
+            确认剧本 → 生成画面 → 合成视频 → 进入历史资产管理
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 工作流进度条
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        st.progress(100, text="构思")
+    with col2:
+        st.progress(50, text="生产")
+    with col3:
+        st.progress(0, text="资产")
+    
+    st.divider()
     
     # 如果有已生成的视频，展示
     if st.session_state.scenes_data:

@@ -103,14 +103,35 @@ def render_script_view(
         refine_script_by_chat_func: 对话微调剧本函数
         render_ai_video_pipeline_func: 视频渲染函数
     """
-    # 🎬 Hero Section - 品牌视觉冲击
-    try:
-        from views.components.hero_section import hero_section
-        hero_section()
-    except Exception as e:
-        # 如果组件加载失败，显示简化版标题
-        st.title("🚖 VideoTaxi")
-        st.caption("让流量为你 7x24 小时跑单")
+    # 🎬 工作流状态指示器
+    st.markdown("""
+    <div style="
+        background: linear-gradient(90deg, rgba(255,49,49,0.2) 0%, rgba(255,49,49,0.05) 100%);
+        border-left: 4px solid #FF3131;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        border-radius: 0 8px 8px 0;
+    ">
+        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: 2px;">
+            当前阶段: STEP 1/3
+        </div>
+        <div style="font-size: 18px; font-weight: 700; color: #FF3131; margin-top: 4px;">
+            🔥 构思态 — 创意发散
+        </div>
+        <div style="font-size: 13px; color: #8b949e; margin-top: 4px;">
+            写剧本 → 锁定剧本 → 进入影像工坊渲染
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 工作流进度条
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        st.progress(33, text="构思")
+    with col2:
+        st.progress(0, text="生产")
+    with col3:
+        st.progress(0, text="资产")
     
     # 使用标签页组织内容
     script_tab1, script_tab2 = st.tabs(["🎯 快速创作", "⚙️ 高级设置"])

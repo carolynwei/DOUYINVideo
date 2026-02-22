@@ -216,8 +216,20 @@ def main():
     # 渲染侧边栏，获取用户ID
     user_id = render_sidebar(api_keys)
     
-    # 主内容区 - Tabs
-    tab_script, tab_video, tab_assets = st.tabs(["🔥 剧本构思", "🎬 影像工坊", "📂 历史资产"])
+    # 主内容区 - 三态分离工作流
+    st.markdown("""
+    <div style="margin-bottom: 10px;">
+        <span style="font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 2px;">
+            VideoTaxi 三态工作流
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    tab_script, tab_video, tab_assets = st.tabs([
+        "🔥 构思态：写剧本", 
+        "🎬 生产态：渲染", 
+        "📂 资产态：管理"
+    ])
     
     with tab_script:
         render_script_view(
