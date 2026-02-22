@@ -237,18 +237,25 @@ if st.session_state.get('page_mode') == "💬 对话创作模式":
     )
     st.stop()  # 停止后续的工作流逻辑
 
-# ==================== 工作流模式 ====================
+# ==================== 🎭 Tab 工作台布局 ====================
 
-col1, col2 = st.columns([1, 1.2])
+tab_script, tab_video, tab_assets = st.tabs(["🔥 剧本构思", "🎬 影像工坊", "📂 历史资产"])
 
-with col1:
-    st.subheader("📡 热点挖掘机")
-    if st.button("刷新抖音热点 🔄", help="实时获取抖音最新热搜榜单"):
-        with st.spinner("扫描中..."):
-            st.session_state.hot_topics = get_hot_topics(tianapi_key)
-            
-    if st.session_state.hot_topics:
-        selected_topic = st.selectbox("📌 选择目标：", st.session_state.hot_topics, help="从热搜榜单中选择一个话题")
+# ==================== Tab 1: 剧本构思 ====================
+with tab_script:
+    col1, col2 = st.columns([1, 1.2])
+    
+    with col1:
+        st.subheader("📡 热点挖掘机")
+        if st.button("刷新抖音热点 🔄", help="实时获取抖音最新热搜榜单"):
+            with st.spinner("扫描中..."):
+                st.session_state.hot_topics = get_hot_topics(tianapi_key)
+                
+        if st.session_state.hot_topics:
+            selected_topic = st.selectbox("📌 选择目标：", st.session_state.hot_topics, help="从热搜榜单中选择一个话题")
+        else:
+            st.info("👉 点击上方按钮获取热点")
+            selected_topic = st.text_input("或直接输入主题：", placeholder="例：内耗、裸辞、理财")
         
         # 🎭 剧本生成风格选择（全新升级）
         script_mode = st.radio(
@@ -370,48 +377,11 @@ with col1:
                     st.rerun()
                 else:
                     st.error(f"❌ 积分不足！当前操作需要 {model_cost} 积分。请明日签到或更换低消耗模型。")
-            if st.button("🤖 呼叫 AI 导演写剧本", help="由 DeepSeek-V3 驱动，自动构思分镜与视觉指令"):
-                if not llm_api_key: 
-                    st.error("请配置 DeepSeek Key")
-                else:
-                    # 💰 积分扣除检查
-                    model_cost = st.session_state.get('model_cost', 1)
-                    if deduct_credits(user_id, model_cost):
-                        with st.spinner(f"AI 导演构思中... (消耗 {model_cost} 积分)"):
-                            st.session_state.scenes_data = generate_script_json(selected_topic, llm_api_key)
-                        st.success(f"✅ 剧本生成成功！已扣除 {model_cost} 积分")
-                        st.rerun()
-                    else:
-                        st.error(f"❌ 积分不足！当前操作需要 {model_cost} 积分。请明日签到或更换低消耗模型。")
-        
-        else:  # 爆款剧本大师模式
-            if st.button("🔥 呼叫爆款剧本大师", help="顶尖爆款视频制作人 & 认知刺客，精通算法推流逻辑"):
-                if not llm_api_key: st.error("请配置 DeepSeek Key")
-                else:
-                    with st.status("🎬 爆款剧本大师创作中...", expanded=True) as status:
-                        st.write("📖 分析主题，选定心理学武器...")
-                        st.write("🪝 构思黄金3秒Hook...")
-                        st.write("✍️ 撰写高能量刺客文案...")
-                        
-                        if auto_image_mode:
-                            st.write("🎥 自动生成导演级分镜提示词...")
-                        else:
-                            st.write("⏸️ 画面分镜留空，等待人类导演指示...")
-                        
-                        # 把前端的开关状态传给后台函数
-                        viral_script = generate_viral_script(selected_topic, llm_api_key, auto_image_prompt=auto_image_mode)
-                        
-                        if viral_script:
-                            st.session_state.scenes_data = viral_script
-                            status.update(label="✅ 爆款剧本创作完成！", state="complete", expanded=False)
-                        else:
-                            status.update(label="❌ 创作失败", state="error")
 
-
-with col2:
-    st.subheader("✍️ 编导微调台")
-    if st.session_state.scenes_data:
-        st.caption("💡 提示：你可以双击单元格修改文案，或调整提示词以改变画风")
+    with col2:
+        st.subheader("✍️ 编导微调台")
+        if st.session_state.scenes_data:
+            st.caption("💡 提示：你可以双击单元格修改文案，或调整提示词以改变画风")
         
         # 必须将编辑后的数据存下来，这样精修时才能拿到用户手动改过的最新版本
         edited_scenes = st.data_editor(
@@ -479,3 +449,52 @@ with col2:
                                 st.download_button("⬇️ 下载成片", data=video_bytes, file_name=f"{selected_topic}.mp4", mime="video/mp4", help="下载生成的视频文件")
                         else:
                             status.update(label="❌ 生成失败", state="error")
+
+# ==================== Tab 2: 影像工坊 ====================
+with tab_video:
+    st.info("🎬 **影像工坊**：生成的视频预览和素材下载将显示在这里")
+    
+    # 如果有已生成的视频，展示
+    if st.session_state.scenes_data:
+        st.markdown("### 🎬 分镜预览")
+        st.caption("💡 展示当前剧本的分镜结构")
+        
+        # 分镜预览卡片化布局
+        num_scenes = len(st.session_state.scenes_data)
+        cols_per_row = 3
+        
+        for i in range(0, num_scenes, cols_per_row):
+            cols = st.columns(cols_per_row)
+            for j, col in enumerate(cols):
+                idx = i + j
+                if idx < num_scenes:
+                    scene = st.session_state.scenes_data[idx]
+                    with col:
+                        # 用占位图模拟分镜
+                        st.image("https://via.placeholder.com/300x533/1a1a1a/FF3131?text=Scene+" + str(idx+1), 
+                                caption=f"🎬 分镜 {idx+1}")
+                        with st.expander("📝 查看文案"):
+                            st.write(scene.get('narration', '')[:50] + "...")
+    else:
+        st.warning("👉 请先在【剧本构思】Tab 生成剧本")
+
+# ==================== Tab 3: 历史资产 ====================
+with tab_assets:
+    st.info("📂 **你的云端创作库**")
+    st.markdown("""
+    ### 📊 创作统计
+    - 总视频数：**0** （功能开发中）
+    - 总播放量：**0**
+    -热门作品：暂无
+    
+    ---
+    
+    ### 💾 历史项目
+    🚧 此功能正在开发中...
+    
+    将来你可以在这里：
+    - 查看所有历史创作的视频
+    - 重新编辑历史剧本
+    - 分享到社交媒体
+    - 导出剧本为PDF
+    """)
