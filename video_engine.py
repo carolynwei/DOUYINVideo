@@ -138,6 +138,10 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
     image_paths = generate_images_zhipu(scenes_data, zhipu_key)
     audio_files = generate_all_audios_sync(scenes_data)
     
+    # 🔍 调试信息：显示成功生成的图片数量
+    success_count = sum(1 for p in image_paths if p)
+    st.write(f"📸 成功生成图片数量: {success_count}/{len(image_paths)}")
+    
     scene_clips = []
     temp_files = []
 
@@ -157,11 +161,20 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
             # 🔑 修复：使用 ColorClip 创建纯黑背景
             bg = ColorClip(size=(1080, 1920), color=(0, 0, 0)).set_duration(dur)
 
-        # 🎨 字幕逻辑：用 Pillow 手工绘制（彻底绕过 ImageMagick）
-        subtitle_img = create_subtitle_image(scene['narration'], width=1080, height=400, fontsize=70)
-        txt = ImageClip(subtitle_img).set_duration(dur).set_position(('center', 0.75), relative=True)
+        # 🎨 字幕逻辑：用 Pillow 手工绘制 + 正确处理透明度
+        subtitle_rgba = create_subtitle_image(scene['narration'], width=1080, height=400, fontsize=70)
         
-        scene_clips.append(CompositeVideoClip([bg, txt]).set_audio(audio_clip))
+        # 🔑 核心修复：拆分 RGB 和 Alpha 通道，确保透明度正确
+        # RGBA 数组的前3个通道是颜色，第4个通道是透明度
+        rgb_array = subtitle_rgba[:, :, :3]  # 取前3个通道（RGB）
+        alpha_array = subtitle_rgba[:, :, 3] / 255.0  # 取第4个通道（Alpha），归一化到0-1
+        
+        # 创建字幕图层，明确指定 mask
+        txt_clip = ImageClip(rgb_array).set_duration(dur)
+        txt_clip = txt_clip.set_mask(ImageClip(alpha_array, ismask=True).set_duration(dur))
+        txt_clip = txt_clip.set_position(('center', 0.75), relative=True)
+        
+        scene_clips.append(CompositeVideoClip([bg, txt_clip]).set_audio(audio_clip))
 
     # 3. 最终压制与 BGM 混音
     if not scene_clips: return False
