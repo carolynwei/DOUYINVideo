@@ -3,6 +3,7 @@ import os
 from api_services import get_hot_topics, generate_script_json, generate_viral_script, refine_script_data
 from video_engine import render_ai_video_pipeline
 from db_manager import init_db, get_or_create_user, check_in, deduct_credits, get_user_credits
+from chat_page import render_chat_page
 
 # 启动时初始化数据库
 init_db()
@@ -33,9 +34,9 @@ with st.expander("💡 快速上手指南 (点此展开)"):
     st.markdown("""
     1. **选热点**：从左侧获取最新的抖音趋势。
     2. **AI 编剧**：点击生成脚本，你可以手动微调文案。
-    3. **一键出片**：渲染过程约需 2-3 分钟，请耐心等待。
+    3. **一键出片**：渲染过程约需2-3 分钟，请耐心等待。
     ---
-    *注：建议分镜数量控制在 4-6 个，以获得最佳画质。*
+    *注：建议分镜数量控制在4-6 个，以获得最佳画质。*
     """)
 
 if 'hot_topics' not in st.session_state: st.session_state.hot_topics = []
@@ -116,6 +117,20 @@ with st.sidebar:
     st.info(f"💰 当前模型单次调用消耗: **{current_model_cost} 积分**")
         
     st.divider()
+    
+    # 🎯 页面模式切换
+    st.header("🎯 创作模式")
+    page_mode = st.radio(
+        "选择你的创作方式：",
+        ["📝 工作流模式", "💬 对话创作模式"],
+        help="工作流：适合系统化创作 | 对话：自然聊天式创作",
+        horizontal=True
+    )
+    
+    # 存储选择到 session_state
+    st.session_state.page_mode = page_mode
+        
+    st.divider()
         
     # 🎙️ 声音与情绪选择
     st.header("🎙️ 配音音色选择")
@@ -146,6 +161,25 @@ with st.sidebar:
     
     # 存储到 session_state 供后续使用
     st.session_state.voice_id = selected_voice_id
+
+# ==================== 页面模式判断 ====================
+# 检查用户是否登录
+if not st.session_state.get('user_id'):
+    st.warning("⚠️ 请先在左侧侧边栏登录")
+    st.stop()
+
+# 根据用户选择渲染不同页面
+if st.session_state.get('page_mode') == "💬 对话创作模式":
+    # 对话创作页面
+    render_chat_page(
+        user_id=st.session_state.user_id,
+        llm_api_key=st.secrets["DEEPSEEK_KEY"],
+        model_id=st.session_state.model_id,
+        model_cost=st.session_state.model_cost
+    )
+    st.stop()  # 停止后续的工作流逻辑
+
+# ==================== 工作流模式 ====================
 
 col1, col2 = st.columns([1, 1.2])
 
