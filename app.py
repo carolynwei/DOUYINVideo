@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from api_services import get_hot_topics, generate_script_json
+from api_services import get_hot_topics, generate_script_json, generate_viral_script
 from video_engine import render_ai_video_pipeline
 
 st.set_page_config(page_title="AI 视觉视频引擎", page_icon="🎬", layout="wide")
@@ -64,11 +64,39 @@ with col1:
             
     if st.session_state.hot_topics:
         selected_topic = st.selectbox("📌 选择目标：", st.session_state.hot_topics, help="从热搜榜单中选择一个话题")
-        if st.button("🤖 呼叫 AI 导演写剧本", help="由 DeepSeek-V3 驱动，自动构思分镜与视觉指令"):
-            if not llm_api_key: st.error("请配置 DeepSeek Key")
-            else:
-                with st.spinner("AI 导演构思中..."):
-                    st.session_state.scenes_data = generate_script_json(selected_topic, llm_api_key)
+        
+        # 🎬 剧本生成模式选择
+        script_mode = st.radio(
+            "🎭 选择剧本风格：",
+            ["🤖 标准 AI 导演", "🔥 爆款剧本大师"],
+            help="标准模式：快速生成基础脚本 | 爆款模式：运用心理学+导演美学+高能量文案"
+        )
+        
+        if script_mode == "🤖 标准 AI 导演":
+            if st.button("🤖 呼叫 AI 导演写剧本", help="由 DeepSeek-V3 驱动，自动构思分镜与视觉指令"):
+                if not llm_api_key: st.error("请配置 DeepSeek Key")
+                else:
+                    with st.spinner("AI 导演构思中..."):
+                        st.session_state.scenes_data = generate_script_json(selected_topic, llm_api_key)
+        
+        else:  # 爆款剧本大师模式
+            if st.button("🔥 呼叫爆款剧本大师", help="顶尖爆款视频制作人 & 认知刺客，精通算法推流逻辑"):
+                if not llm_api_key: st.error("请配置 DeepSeek Key")
+                else:
+                    with st.status("🎬 爆款剧本大师创作中...", expanded=True) as status:
+                        st.write("📖 分析主题，选定心理学武器...")
+                        st.write("🪝 构思黄金3秒Hook...")
+                        st.write("✍️ 撰写高能量刺客文案...")
+                        st.write("🎥 生成导演级分镜提示词...")
+                        
+                        # 调用爆款剧本生成函数
+                        viral_script = generate_viral_script(selected_topic, llm_api_key)
+                        
+                        if viral_script:
+                            st.session_state.scenes_data = viral_script
+                            status.update(label="✅ 爆款剧本创作完成！", state="complete", expanded=False)
+                        else:
+                            status.update(label="❌ 创作失败", state="error")
 
 with col2:
     st.subheader("✍️ 编导微调台")
