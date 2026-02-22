@@ -49,6 +49,23 @@ def inject_custom_css(theme='dark'):
     
     st.markdown(f"""
     <style>
+    /* 0. 全局背景和文字颜色 */
+    .stApp {{
+        background-color: {colors['bg_main']};
+        color: {colors['text']};
+    }}
+    
+    /* 主内容区域 */
+    .main {{
+        background-color: {colors['bg_main']};
+        color: {colors['text']};
+    }}
+    
+    /* 所有标题和段落 */
+    .stMarkdown, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {{
+        color: {colors['text']} !important;
+    }}
+    
     /* 1. 隐藏默认的顶部红线和多余边距 */
     header {{visibility: hidden;}}
     .main .block-container {{padding-top: 2rem;}}
@@ -75,6 +92,11 @@ def inject_custom_css(theme='dark'):
         border-right: 1px solid {colors['border']};
         background-color: {colors['bg_sidebar']};
     }}
+    
+    /* 侧边栏内的文字 */
+    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] p, [data-testid="stSidebar"] label {{
+        color: {colors['text']} !important;
+    }}
 
     /* 4. 聊天气泡专业化 */
     [data-testid="stChatMessage"] {{
@@ -91,12 +113,23 @@ def inject_custom_css(theme='dark'):
         border-radius: 8px;
     }}
     
-    /* 6. 输入框工业感 */
-    .stTextInput>div>div>input {{
-        background-color: {colors['input_bg']};
-        border: 1px solid {colors['border']};
-        border-radius: 5px;
+    /* 表格内容颜色 */
+    .stDataFrame table {{
+        background-color: {colors['bg_secondary']};
         color: {colors['text']};
+    }}
+    
+    /* 6. 输入框工业感 */
+    .stTextInput>div>div>input, .stTextArea textarea, .stSelectbox>div>div>div {{
+        background-color: {colors['input_bg']} !important;
+        border: 1px solid {colors['border']} !important;
+        border-radius: 5px;
+        color: {colors['text']} !important;
+    }}
+    
+    /* 输入框标签 */
+    .stTextInput label, .stTextArea label, .stSelectbox label, .stRadio label {{
+        color: {colors['text']} !important;
     }}
     
     /* 7. Metric 卡片强化 */
@@ -104,6 +137,10 @@ def inject_custom_css(theme='dark'):
         font-size: 2rem;
         font-weight: bold;
         color: {colors['accent']};
+    }}
+    
+    [data-testid="stMetricLabel"] {{
+        color: {colors['text']} !important;
     }}
     
     /* 8. Tab 标签页样式 */
@@ -116,6 +153,7 @@ def inject_custom_css(theme='dark'):
         padding: 10px 20px;
         background-color: {colors['bg_secondary']};
         border: 1px solid {colors['border']};
+        color: {colors['text']};
     }}
     
     .stTabs [aria-selected="true"] {{
@@ -127,6 +165,46 @@ def inject_custom_css(theme='dark'):
     .stAlert {{
         border-radius: 8px;
         border: 1px solid {colors['border']};
+        background-color: {colors['bg_secondary']};
+    }}
+    
+    /* 10. Expander 样式 */
+    .streamlit-expanderHeader {{
+        background-color: {colors['bg_secondary']};
+        border: 1px solid {colors['border']};
+        color: {colors['text']} !important;
+    }}
+    
+    .streamlit-expanderContent {{
+        background-color: {colors['bg_secondary']};
+        border: 1px solid {colors['border']};
+    }}
+    
+    /* 11. Caption 文字 */
+    .stCaption {{
+        color: {colors['text_secondary']} !important;
+    }}
+    
+    /* 12. Radio 按钮 */
+    .stRadio>div {{
+        background-color: {colors['bg_secondary']};
+        border-radius: 5px;
+        padding: 0.5rem;
+    }}
+    
+    /* 13. Checkbox */
+    .stCheckbox label {{
+        color: {colors['text']} !important;
+    }}
+    
+    /* 14. Toggle 开关 */
+    .stToggle label {{
+        color: {colors['text']} !important;
+    }}
+    
+    /* 15. Divider 分割线 */
+    hr {{
+        border-color: {colors['border']};
     }}
     </style>
     """, unsafe_allow_html=True)
