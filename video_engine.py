@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+视频引擎模块：处理视频渲染、TTS合成、BGM混音等功能
+确保所有中文字符正确显示
+"""
+
 import os
 import platform
 import asyncio
@@ -201,10 +207,10 @@ def call_volcengine_tts(text, voice_id, output_path):
         script_path = os.path.join(os.path.dirname(__file__), "examples", "volcengine", "bidirection.py")
         
         if not os.path.exists(script_path):
-            print(f"❌ 找不到火山引擎 V3 脚本: {script_path}")
+            st.error(f"❌ 找不到火山引擎 V3 脚本: {script_path}")
             return False
         
-        print(f"🚀 正在调用豆包语音合成大模型: {voice_id}...")
+        st.info(f"🚀 正在调用豆包语音合成大模型: {voice_id}...")
         
         # 3. 构建命令行指令
         command = [
@@ -229,27 +235,27 @@ def call_volcengine_tts(text, voice_id, output_path):
         
         # 5. 验证输出文件
         if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-            print(f"✅ 豆包大模型音频流接收完毕！音频已保存至: {output_path}")
+            st.success(f"✅ 豆包大模型音频流接收完毕！音频已保存至: {output_path}")
             return True
         else:
-            print(f"❌ 输出文件未生成或为空: {output_path}")
+            st.error(f"❌ 输出文件未生成或为空: {output_path}")
             return False
             
     except subprocess.TimeoutExpired:
-        print("❌ 火山引擎 TTS 超时（60秒）")
+        st.error("❌ 火山引擎 TTS 超时（60秒）")
         return False
     except subprocess.CalledProcessError as e:
-        print(f"❌ 火山大模型合成失败，官方脚本报错信息：")
-        print(e.stderr)
+        st.error(f"❌ 火山大模型合成失败，官方脚本报错信息：")
+        st.error(e.stderr)
         return False
     except Exception as e:
-        print(f"❌ 火山引擎 TTS 调用异常: {e}")
+        st.error(f"❌ 火山引擎 TTS 调用异常: {e}")
         return False
 
 async def text_to_mp3(text, filename, voice_id="zh-CN-YunxiNeural"):
     """【云端优化版】直接联网生成配音，增加重试逻辑。支持多路 TTS 路由。"""
     
-    # 🎙️ 路由 1：火山引擎 TTS (方言 + 高情绪表达)
+    # 🎹️ 路由 1：火山引擎 TTS (方言 + 高情绪表达)
     if voice_id.startswith("volc_"):
         # 去掉前缀，获取真实的音色 ID
         real_voice_id = voice_id.replace("volc_", "")
@@ -258,7 +264,7 @@ async def text_to_mp3(text, filename, voice_id="zh-CN-YunxiNeural"):
             return True
         else:
             # 火山引擎失败，回退到 Edge TTS
-            print("⚠️ 火山引擎不可用，回退到 Edge TTS 模式")
+            st.warning("⚠️ 火山引擎不可用，回退到 Edge TTS 模式")
             voice_id = "zh-CN-YunxiNeural"  # 使用默认男声
     
     # 🎹️ 路由 2：Edge TTS (免费兼底)
@@ -270,7 +276,7 @@ async def text_to_mp3(text, filename, voice_id="zh-CN-YunxiNeural"):
             await communicate.save(filename)
             return True
         except Exception as e:
-            print(f"TTS 尝试 {attempt+1}/3 失败: {e}")
+            st.warning(f"TTS 尝试 {attempt+1}/3 失败: {e}")
             await asyncio.sleep(2)
     return False
 

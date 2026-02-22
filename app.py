@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+ASSASSIN AI - 认知刺客创作平台
+确保所有中文字符正确显示
+"""
+
 import streamlit as st
 import os
 from api_services import get_hot_topics, generate_script_json, generate_viral_script, refine_script_data

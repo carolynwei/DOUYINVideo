@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+API 服务模块：处理热点获取、剧本生成、图片生成等功能
+确保所有中文字符正确显示
+"""
+
 import os
 import re
 import json
@@ -360,7 +366,7 @@ def get_pexels_videos(query, api_key, required_duration):
             
         return downloaded_files
     except Exception as e:
-        print(f"Pexels素材获取失败：{e}")
+        st.error(f"Pexels素材获取失败：{e}")
         return []
 
 def refine_script_data(current_scenes, api_key):
