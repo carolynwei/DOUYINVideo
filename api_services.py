@@ -22,10 +22,24 @@ def get_hot_topics(api_key):
         return []
 
 def generate_script_json(topic, api_key):
-    """使用 DeepSeek 生成剧本"""
+    """使用 DeepSeek 生成剧本（标准模式，注入爆款基因）"""
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1".strip())
-    system_prompt = """你是一位短视频导演。请根据热搜创作分镜脚本。
-    必须严格输出 JSON 数组，包含 4-6 个分镜。格式：[{"narration": "...", "image_prompt": "..."}]"""
+    
+    # 🔥 升级版标准模式：注入爆款创作基因
+    system_prompt = """你是一位专业的短视频导演，精通爆款视频创作法则。
+
+【核心创作原则】：
+1. 黄金前3秒：第一句必须有强冲击力，直接吸引注意力（悬念/冲突/反常识）
+2. 删除废话：不用“那么、其实、众所周知”等连接词，直接上结论
+3. 具体化表达：用动词和名词替换模糊形容词（“很快”→“推背感”）
+4. 情绪节奏：每段都要有情绪起伏，适当使用反问或预告
+5. 画面张力：描述要包含主体、动作、场景、光线、镜头语言
+
+【输出要求】：
+必须严格输出 JSON 数组，包含 4-6 个分镜。格式：
+[{"narration": "口播文案（第一句必须是金句Hook）", "image_prompt": "English prompt, cinematic lighting, detailed scene description"}]
+
+绝对不要输出 Markdown 标记（如 ```json）或其他解释性文字。"""
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
