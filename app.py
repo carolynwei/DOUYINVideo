@@ -11,71 +11,132 @@ init_chat_db()  # 初始化聊天记录表
 
 st.set_page_config(page_title="🥷 ASSASSIN AI - 认知刺客创作平台", page_icon="🥷", layout="wide")
 
-# 🎨 CSS 样式注入 - 工业电影感 + SaaS 级交互
-def inject_custom_css():
-    st.markdown("""
+# 🎨 CSS 样式注入 - 工业电影感 + SaaS 级交互 + 主题切换
+def inject_custom_css(theme='dark'):
+    """
+    根据主题动态注入 CSS 样式
+    
+    Args:
+        theme: 'dark' 或 'light'
+    """
+    # 主题配色方案
+    if theme == 'dark':
+        # 深色模式：碳素黑 + 刺客红
+        colors = {
+            'bg_main': '#0A0A0B',
+            'bg_secondary': '#161B22',
+            'bg_sidebar': '#0d1117',
+            'border': '#30363d',
+            'text': '#E6EDF3',
+            'text_secondary': '#8b949e',
+            'accent': '#FF3131',
+            'input_bg': '#0d1117',
+            'chat_bg': '#0d1117'
+        }
+    else:
+        # 浅色模式：白色 + 刺客红
+        colors = {
+            'bg_main': '#FFFFFF',
+            'bg_secondary': '#F6F8FA',
+            'bg_sidebar': '#F6F8FA',
+            'border': '#D0D7DE',
+            'text': '#24292F',
+            'text_secondary': '#57606A',
+            'accent': '#FF3131',
+            'input_bg': '#FFFFFF',
+            'chat_bg': '#F6F8FA'
+        }
+    
+    st.markdown(f"""
     <style>
     /* 1. 隐藏默认的顶部红线和多余边距 */
-    header {visibility: hidden;}
-    .main .block-container {padding-top: 2rem;}
+    header {{visibility: hidden;}}
+    .main .block-container {{padding-top: 2rem;}}
 
     /* 2. 按钮悬浮发光效果 */
-    .stButton>button {
+    .stButton>button {{
         width: 100%;
         border-radius: 5px;
-        border: 1px solid #FF3131;
+        border: 1px solid {colors['accent']};
         background: transparent;
-        color: #FF3131;
+        color: {colors['accent']};
         font-weight: bold;
         transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        background: #FF3131;
+    }}
+    .stButton>button:hover {{
+        background: {colors['accent']};
         color: white;
         box-shadow: 0 0 20px rgba(255, 49, 49, 0.4);
         transform: translateY(-2px);
-    }
+    }}
 
     /* 3. 侧边栏卡片化 */
-    [data-testid="stSidebar"] {
-        border-right: 1px solid #30363d;
-        background-color: #0d1117;
-    }
+    [data-testid="stSidebar"] {{
+        border-right: 1px solid {colors['border']};
+        background-color: {colors['bg_sidebar']};
+    }}
 
     /* 4. 聊天气泡专业化 */
-    [data-testid="stChatMessage"] {
-        border: 1px solid #30363d;
+    [data-testid="stChatMessage"] {{
+        border: 1px solid {colors['border']};
         border-radius: 8px;
         padding: 1rem;
-        background-color: #0d1117;
+        background-color: {colors['chat_bg']};
         margin-bottom: 0.5rem;
-    }
+    }}
     
     /* 5. 表格专业化 */
-    .stDataFrame {
-        border: 1px solid #30363d;
+    .stDataFrame {{
+        border: 1px solid {colors['border']};
         border-radius: 8px;
-    }
+    }}
     
     /* 6. 输入框工业感 */
-    .stTextInput>div>div>input {
-        background-color: #0d1117;
-        border: 1px solid #30363d;
+    .stTextInput>div>div>input {{
+        background-color: {colors['input_bg']};
+        border: 1px solid {colors['border']};
         border-radius: 5px;
-        color: #E6EDF3;
-    }
+        color: {colors['text']};
+    }}
     
     /* 7. Metric 卡片强化 */
-    [data-testid="stMetricValue"] {
+    [data-testid="stMetricValue"] {{
         font-size: 2rem;
         font-weight: bold;
-        color: #FF3131;
-    }
+        color: {colors['accent']};
+    }}
+    
+    /* 8. Tab 标签页样式 */
+    .stTabs [data-baseweb="tab-list"] {{
+        gap: 8px;
+    }}
+    
+    .stTabs [data-baseweb="tab"] {{
+        border-radius: 5px;
+        padding: 10px 20px;
+        background-color: {colors['bg_secondary']};
+        border: 1px solid {colors['border']};
+    }}
+    
+    .stTabs [aria-selected="true"] {{
+        background-color: {colors['accent']} !important;
+        color: white !important;
+    }}
+    
+    /* 9. 信息框样式 */
+    .stAlert {{
+        border-radius: 8px;
+        border: 1px solid {colors['border']};
+    }}
     </style>
     """, unsafe_allow_html=True)
 
-# 执行 CSS 注入
-inject_custom_css()
+# 初始化主题状态（在侧边栏之前）
+if 'theme_mode' not in st.session_state:
+    st.session_state.theme_mode = 'dark'  # 默认深色模式
+
+# 执行 CSS 注入（使用当前主题）
+inject_custom_css(st.session_state.theme_mode)
 
 # 💡 快速上手指南（折叠式）
 with st.expander("💡 快速上手指南 (点此展开)"):
@@ -129,6 +190,29 @@ with st.sidebar:
     else:
         st.warning("👈 请先输入用户名登录")
         st.stop()
+    
+    # 🎨 主题切换
+    st.header("🎨 界面主题")
+    
+    # 初始化主题状态
+    if 'theme_mode' not in st.session_state:
+        st.session_state.theme_mode = 'dark'  # 默认深色模式
+    
+    # 主题切换按钮
+    theme_options = {
+        'dark': '🌙 深色模式',
+        'light': '☀️ 浅色模式'
+    }
+    
+    current_theme = st.session_state.theme_mode
+    next_theme = 'light' if current_theme == 'dark' else 'dark'
+    
+    if st.button(f"切换至 {theme_options[next_theme]}", use_container_width=True, key="theme_toggle"):
+        st.session_state.theme_mode = next_theme
+        st.rerun()
+    
+    st.caption(f"当前：{theme_options[current_theme]}")
+    st.divider()
     
     st.header("⚙️ 核心引擎设置")
     
