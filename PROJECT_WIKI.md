@@ -12,8 +12,9 @@
 | **核心定位** | AI驱动的全自动短视频生成工具 |
 | **目标平台** | 抖音（竖屏 9:16，1080x1920） |
 | **技术栈** | Python + Streamlit + DeepSeek + 智谱AI + 火山引擎 |
+| **架构模式** | 路由中心化 + 视图层分离 + 依赖注入 |
 | **部署方式** | 本地运行 / Streamlit Cloud / VPS |
-| **当前版本** | v3.0.0 (2026-02-22) |
+| **当前版本** | v3.1.0 (2026-02-22) - 模块化重构版 |
 | **仓库地址** | https://github.com/carolynwei/DOUYINVideo |
 
 ---
@@ -88,12 +89,11 @@ streamlit run app.py
 douyinVideo/
 │
 ├── 📄 核心应用文件
-│   ├── app.py                    # 🎯 主应用入口 (1277行)
+│   ├── app.py                    # 🎯 主应用入口 (276行) - 路由中心化架构
 │   │                              #    - Streamlit页面配置
-│   │                              #    - 赛博驾驶舱主题CSS
-│   │                              #    - 三Tab工作台布局
-│   │                              #    - 侧边栏用户系统
-│   │                              #    - 渐进式工作流状态机
+│   │                              #    - Session State 初始化
+│   │                              #    - 侧边栏渲染
+│   │                              #    - Tab 路由分发
 │   │
 │   ├── api_services.py           # 🔌 AI API服务层 (548行)
 │   │                              #    - get_hot_topics(): 抖音热搜获取
@@ -104,7 +104,7 @@ douyinVideo/
 │   │                              #    - refine_script_data(): 大师精修
 │   │                              #    - refine_script_by_chat(): 对话微调
 │   │
-│   ├── video_engine.py           # 🎬 视频渲染引擎 (868行)
+│   ├── video_engine.py           # 🎬 视频渲染引擎 (890行)
 │   │                              #    - VIBE_ROUTING_TABLE: 情绪-参数路由表
 │   │                              #    - get_bgm_by_style(): BGM风格路由
 │   │                              #    - create_subtitle_image(): Pillow字幕绘制
@@ -120,12 +120,11 @@ douyinVideo/
 │   │                              #    - check_in(): 每日签到逻辑
 │   │                              #    - deduct_credits(): 积分扣除
 │   │                              #    - init_chat_db(): 聊天记录表
-│   │                              #    - save_message/load_messages(): 对话持久化
+│   │                              #    - save_script_version(): 剧本版本持久化
 │   │
 │   ├── chat_page.py              # 💬 对话创作页 (168行)
 │   │                              #    - call_deepseek_chat(): DeepSeek API调用
 │   │                              #    - render_chat_page(): 聊天界面渲染
-│   │                              #    - 系统提示词(爆款创作大师)
 │   │
 │   ├── tianapi_navigator.py      # 🛰️ 热点导航员 (429行)
 │   │                              #    - TianapiNavigator: 天行数据对接
@@ -134,11 +133,43 @@ douyinVideo/
 │   │                              #    - expand_topic_context(): 热点背景扩充
 │   │                              #    - auto_pilot_generate(): 全自动发车
 │   │
-│   └── scheduler_tower.py        # 🗼 调度塔台 (545行)
-│                                   #    - PerformanceMetrics: 视频表现数据模型
-│                                   #    - FeedbackDatabase: 反馈数据持久化
-│                                   #    - DataAwareNavigator: 数据感应导航
-│                                   #    - SchedulerTower: 7x24小时自动调度
+│   ├── scheduler_tower.py        # 🗼 调度塔台 (545行)
+│   │                              #    - PerformanceMetrics: 视频表现数据模型
+│   │                              #    - FeedbackDatabase: 反馈数据持久化
+│   │                              #    - DataAwareNavigator: 数据感应导航
+│   │                              #    - SchedulerTower: 7x24小时自动调度
+│   │
+│   └── cyber_theme.py            # 🎨 赛博主题系统 (357行)
+│                                   #    - apply_cyber_theme(): 全局CSS主题
+│                                   #    - render_sidebar_dashboard(): 侧边栏面板
+│
+├── 🖼️ 视图层 (views/)
+│   ├── __init__.py               # 视图模块入口
+│   ├── script_view.py            # 🔥 剧本构思 Tab (625行)
+│   │                              #    - 创作面板（主题输入+风格选择）
+│   │                              #    - 剧本编辑器（data_editor）
+│   │                              #    - 工作流状态机（draft→locked→producing→completed）
+│   │                              #    - SSML质量检查
+│   │                              #    - 对话微调
+│   │
+│   ├── video_view.py             # 🎬 影像工坊 Tab (47行)
+│   │                              #    - 分镜预览卡片网格
+│   │                              #    - 文案查看器
+│   │
+│   ├── assets_view.py            # 📂 历史资产 Tab (73行)
+│   │                              #    - 创作统计
+│   │                              #    - 历史版本列表
+│   │                              #    - 版本恢复功能
+│   │
+│   ├── sidebar_view.py           # 📊 侧边栏视图 (356行)
+│   │                              #    - 用户登录/签到
+│   │                              #    - 热点雷达
+│   │                              #    - 全自动发车
+│   │                              #    - 调度塔台
+│   │                              #    - 引擎设置
+│   │
+│   └── components/
+│       └── hero_section.py       # 🎬 Hero 视觉组件
 │
 ├── 🎨 资源文件
 │   └── assets/
@@ -149,20 +180,21 @@ douyinVideo/
 │           ├── growth/           # 👍 听劝养成BGM
 │           ├── pov/              # 🎬 POV沉浸BGM
 │           ├── venting/          # 🔥 情绪宣泄BGM
-│           └── meme/             # 🐱 Meme抗象BGM
+│           ├── meme/             # 🐱 Meme抗象BGM
+│           └── README.md         # BGM使用说明
 │
 ├── ⚙️ 配置与部署
 │   ├── .streamlit/
 │   │   ├── config.toml           # Streamlit配置
 │   │   └── secrets.toml          # API密钥 (需自行创建)
-│   │                               #    - DEEPSEEK_KEY
-│   │                               #    - ZHIPU_KEY
-│   │                               #    - TIANAPI_KEY
-│   │                               #    - PEXELS_KEY (可选)
+│   │                               #    - TIANAPI_KEY / tianapi.key
+│   │                               #    - DEEPSEEK_KEY / deepseek.key
+│   │                               #    - ZHIPU_KEY / zhipu.key
+│   │                               #    - PEXELS_KEY / pexels.key (可选)
 │   │                               #    - VOLC_APPID / VOLC_ACCESS_TOKEN (可选)
 │   │
 │   ├── requirements.txt          # Python依赖
-│   ├── packages.txt              # 系统依赖 (fonts-noto-cjk)
+│   ├── packages.txt              # 系统依赖 (fonts-noto-cjk, ffmpeg)
 │   ├── runtime.txt               # Python版本 (3.9)
 │   └── environment.yml           # Conda环境配置
 │
@@ -503,6 +535,7 @@ CREATE TABLE video_performance (
 | v1.5.0 | 2024-02 | 火山引擎TTS、AI精修 |
 | v2.0.0 | 2024-02 | 对话创作模式、积分系统 |
 | v3.0.0 | 2026-02 | 渐进式工作流、BGM路由、SSML标注 |
+| **v3.1.0** | **2026-02** | **模块化重构：路由中心化架构、视图层分离、代码从1277行精简至276行** |
 
 ---
 
@@ -845,6 +878,55 @@ st.write(f"下次发车: {status['next_run']}")
 ---
 
 ## 🏗️ 架构设计原理
+
+### 模块化架构 (v3.1.0)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        应用入口层 (App Layer)                      │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                      app.py (276行)                      │    │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │    │
+│  │  │ 页面配置      │  │ Session State│  │  路由分发    │   │    │
+│  │  │ set_page_config│  │   初始化     │  │  Tab路由    │   │    │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘   │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        视图层 (View Layer)                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
+│  │ script_view │  │ video_view  │  │      assets_view        │  │
+│  │  (625行)    │  │   (47行)    │  │       (73行)            │  │
+│  │             │  │             │  │                         │  │
+│  │ • 创作面板   │  │ • 分镜预览   │  │ • 创作统计              │  │
+│  │ • 剧本编辑器 │  │ • 文案查看   │  │ • 版本管理              │  │
+│  │ • 工作流状态 │  │             │  │ • 版本恢复              │  │
+│  │ • SSML检查  │  │             │  │                         │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      业务逻辑层 (Service Layer)                   │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
+│  │ api_services│  │video_engine │  │      db_manager         │  │
+│  │  (548行)    │  │  (890行)    │  │      (146行)            │  │
+│  │             │  │             │  │                         │  │
+│  │ • 剧本生成   │  │ • 视频渲染   │  │ • 用户管理              │  │
+│  │ • AI绘画    │  │ • TTS合成   │  │ • 积分系统              │  │
+│  │ • 剧本精修   │  │ • BGM混音   │  │ • 版本持久化            │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 路由中心化设计原则
+
+1. **单一职责**: `app.py` 仅负责路由和状态初始化，不处理具体UI逻辑
+2. **依赖注入**: 服务层函数通过参数传递给视图层，便于测试和替换
+3. **视图层分离**: 每个 Tab 独立成一个模块，代码清晰可维护
+4. **向后兼容**: 保持原有 API 接口不变，功能完全保留
 
 ### 工作流状态机
 

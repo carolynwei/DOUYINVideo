@@ -20,7 +20,11 @@ import random
 import re
 from PIL import Image, ImageDraw, ImageFont
 import streamlit as st
-from moviepy.editor import AudioFileClip, ImageClip, ColorClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip, afx, concatenate_audioclips
+from moviepy.editor import (
+    AudioFileClip, ImageClip, ColorClip, CompositeVideoClip, 
+    concatenate_videoclips, CompositeAudioClip, afx, concatenate_audioclips,
+    vfx, TextClip
+)
 
 
 def clean_ssml_for_subtitle(text):
@@ -40,6 +44,354 @@ def clean_ssml_for_subtitle(text):
     clean_text = ' '.join(clean_text.split())
     
     return clean_text
+
+
+# ==================== 视频动画效果 ====================
+
+def apply_ken_burns_effect(clip, duration, zoom_factor=1.15, direction='in'):
+    """
+    Ken Burns 效果 - 缓慢缩放平移，让静态图片产生动态感
+    
+    Args:
+        clip: ImageClip 对象
+        duration: 视频时长
+        zoom_factor: 缩放倍数 (1.0 = 无缩放)
+        direction: 'in'(放大) 或 'out'(缩小)
+    """
+    if direction == 'in':
+        # 从正常大小缓慢放大
+        return clip.resize(lambda t: 1 + (zoom_factor - 1) * t / duration)
+    else:
+        # 从放大状态缓慢缩小到正常
+        return clip.resize(lambda t: zoom_factor - (zoom_factor - 1) * t / duration)
+
+
+def apply_subtle_pan(clip, duration, pan_direction='horizontal'):
+    """
+    轻微平移效果 - 模拟镜头移动
+    
+    Args:
+        clip: ImageClip 对象
+        duration: 视频时长
+        pan_direction: 'horizontal'(水平) 或 'vertical'(垂直)
+    """
+    w, h = clip.size
+    
+    if pan_direction == 'horizontal':
+        # 从左向右轻微平移
+        def pan_position(t):
+            progress = t / duration
+            x = int(w * 0.05 * progress)  # 移动 5% 的宽度
+            return (-x, 'center')
+        return clip.set_position(pan_position)
+    else:
+        # 从上向下轻微平移
+        def pan_position(t):
+            progress = t / duration
+            y = int(h * 0.05 * progress)  # 移动 5% 的高度
+            return ('center', -y)
+        return clip.set_position(pan_position)
+
+
+def apply_fade_transition(clip, duration, fade_in=0.5, fade_out=0.5):
+    """
+    淡入淡出效果
+    
+    Args:
+        clip: 视频片段
+        duration: 总时长
+        fade_in: 淡入时长(秒)
+        fade_out: 淡出时长(秒)
+    """
+    return clip.fadein(fade_in).fadeout(fade_out)
+
+
+def apply_subtle_zoom_pulse(clip, duration, pulse_count=2):
+    """
+    轻微呼吸感缩放 - 模拟心跳/呼吸节奏
+    
+    Args:
+        clip: ImageClip 对象
+        duration: 视频时长
+        pulse_count: 呼吸次数
+    """
+    import math
+    
+    def pulse_resize(t):
+        # 正弦波产生呼吸效果
+        pulse = math.sin(2 * math.pi * pulse_count * t / duration)
+        return 1.0 + 0.03 * pulse  # 3% 的缩放变化
+    
+    return clip.resize(pulse_resize)
+
+
+def create_animated_scene(bg_clip, txt_clip, duration, style_name=None, scene_index=0):
+    """
+    为场景添加动画效果组合
+    
+    Args:
+        bg_clip: 背景图片 clip
+        txt_clip: 字幕 clip
+        duration: 场景时长
+        style_name: 风格名称，用于选择不同动画
+        scene_index: 场景索引，用于交替动画方向
+    
+    Returns:
+        合成后的动画场景
+    """
+    # 根据风格选择动画策略
+    if style_name and "认知刺客" in style_name:
+        # 认知刺客：缓慢推进 + 轻微平移，营造压迫感
+        bg_animated = apply_cinematic_push(bg_clip, duration, intensity=1.15)
+        
+    elif style_name and "情绪宣泄" in style_name:
+        # 情绪宣泄：震动 + 快速缩放，营造紧张感
+        bg_animated = apply_shake_effect(bg_clip, duration, intensity=0.02)
+        bg_animated = apply_zoom_pulse(bg_animated, duration, pulse_count=2, intensity=0.05)
+        
+    elif style_name and "POV沉浸" in style_name:
+        # POV沉浸：第一人称视角推进
+        bg_animated = apply_first_person_walk(bg_clip, duration, speed=1.2)
+        
+    elif style_name and "听勝" in style_name:
+        # 听劝养成：温和的生活感镜头
+        bg_animated = apply_gentle_float(bg_clip, duration)
+        
+    elif style_name and "Meme" in style_name:
+        # Meme：快速切换感
+        bg_animated = apply_meme_zoom(bg_clip, duration)
+        
+    else:
+        # 默认：电影感 Ken Burns 效果，交替方向
+        direction = 'in' if scene_index % 2 == 0 else 'out'
+        bg_animated = apply_cinematic_ken_burns(bg_clip, duration, zoom_factor=1.12, direction=direction)
+    
+    # 添加电影级淡入淡出
+    bg_animated = apply_cinematic_fade(bg_animated, duration, fade_in=0.4, fade_out=0.4)
+    
+    # 字幕动态入场
+    txt_clip = apply_text_entrance(txt_clip, duration)
+    
+    # 合成场景
+    return CompositeVideoClip([bg_animated, txt_clip])
+
+
+# ==================== AI 级转场动画效果 ====================
+
+def apply_cinematic_push(clip, duration, intensity=1.15):
+    """
+    电影级镜头推进效果 - 模拟专业摄像机的推进镜头
+    """
+    import math
+    
+    def push_resize(t):
+        # 缓动函数：开始慢，中间快，结束慢
+        progress = t / duration
+        ease = 1 - math.pow(1 - progress, 3)  # ease-out-cubic
+        return 1.0 + (intensity - 1.0) * ease
+    
+    def push_position(t):
+        # 轻微向中心移动，模拟镜头聚焦
+        progress = t / duration
+        w, h = clip.size
+        center_x = w * 0.02 * progress
+        center_y = h * 0.01 * progress
+        return (-center_x, -center_y)
+    
+    animated = clip.resize(push_resize)
+    return animated.set_position(push_position)
+
+
+def apply_cinematic_ken_burns(clip, duration, zoom_factor=1.12, direction='in'):
+    """
+    电影级 Ken Burns 效果 - 更平滑的缩放和移动
+    """
+    import math
+    
+    def smooth_resize(t):
+        progress = t / duration
+        # 使用正弦缓动
+        if direction == 'in':
+            return 1.0 + (zoom_factor - 1.0) * (0.5 - 0.5 * math.cos(progress * math.pi))
+        else:
+            return zoom_factor - (zoom_factor - 1.0) * (0.5 - 0.5 * math.cos(progress * math.pi))
+    
+    def smooth_pan(t):
+        # 对角线移动
+        progress = t / duration
+        w, h = clip.size
+        offset = 0.03 * (0.5 - 0.5 * math.cos(progress * math.pi))
+        if direction == 'in':
+            return (-w * offset, -h * offset * 0.5)
+        else:
+            return (w * (offset - 0.03), -h * offset * 0.5)
+    
+    animated = clip.resize(smooth_resize)
+    return animated.set_position(smooth_pan)
+
+
+def apply_shake_effect(clip, duration, intensity=0.02):
+    """
+    震动效果 - 用于紧张、激动的场景
+    """
+    import random
+    import math
+    
+    def shake_position(t):
+        w, h = clip.size
+        # 使用噪声函数产生更自然的震动
+        noise_x = math.sin(t * 20) * intensity * w
+        noise_y = math.cos(t * 25) * intensity * h
+        return (noise_x, noise_y)
+    
+    return clip.set_position(shake_position)
+
+
+def apply_zoom_pulse(clip, duration, pulse_count=2, intensity=0.05):
+    """
+    心跳式缩放 - 强调节奏感
+    """
+    import math
+    
+    def pulse_resize(t):
+        progress = t / duration
+        pulse = math.sin(2 * math.pi * pulse_count * progress)
+        # 确保缩放始终大于1
+        return 1.0 + intensity * (pulse + 1) / 2
+    
+    return clip.resize(pulse_resize)
+
+
+def apply_first_person_walk(clip, duration, speed=1.0):
+    """
+    第一人称行走效果 - 模拟 POV 镜头移动
+    """
+    import math
+    
+    def walk_position(t):
+        w, h = clip.size
+        progress = t / duration
+        
+        # 向前推进
+        zoom = 1.0 + 0.1 * progress
+        
+        # 轻微的左右摇摆（模拟步伐）
+        sway = math.sin(progress * 4 * math.pi) * 0.01 * w
+        
+        # 上下起伏（模拟呼吸/步伐）
+        bob = math.sin(progress * 8 * math.pi) * 0.005 * h
+        
+        return (sway, bob)
+    
+    def walk_resize(t):
+        progress = t / duration
+        return 1.0 + 0.08 * progress
+    
+    animated = clip.resize(walk_resize)
+    return animated.set_position(walk_position)
+
+
+def apply_gentle_float(clip, duration):
+    """
+    轻柔漂浮效果 - 适合生活类、治愈类内容
+    """
+    import math
+    
+    def float_position(t):
+        w, h = clip.size
+        progress = t / duration
+        
+        # 缓慢的圆形运动
+        radius = 0.02
+        x = math.cos(progress * 2 * math.pi) * radius * w
+        y = math.sin(progress * 2 * math.pi) * radius * h * 0.5
+        
+        return (x, y)
+    
+    def gentle_zoom(t):
+        progress = t / duration
+        return 1.0 + 0.03 * math.sin(progress * 2 * math.pi)
+    
+    animated = clip.resize(gentle_zoom)
+    return animated.set_position(float_position)
+
+
+def apply_meme_zoom(clip, duration):
+    """
+    Meme 风格快速缩放 - 强调冲击力
+    """
+    import math
+    
+    def meme_resize(t):
+        progress = t / duration
+        # 快速放大然后稳定
+        if progress < 0.1:
+            return 1.0 + 0.1 * (progress / 0.1)
+        else:
+            return 1.1
+    
+    return clip.resize(meme_resize)
+
+
+def apply_cinematic_fade(clip, duration, fade_in=0.4, fade_out=0.4):
+    """
+    电影级淡入淡出 - 更平滑的过渡
+    """
+    return clip.fadein(fade_in).fadeout(fade_out)
+
+
+def apply_text_entrance(txt_clip, duration):
+    """
+    字幕动态入场效果
+    """
+    import math
+    
+    # 字幕从下方滑入
+    def slide_up(t):
+        if t < 0.3:
+            progress = t / 0.3
+            ease = 1 - math.pow(1 - progress, 3)
+            return ('center', 0.75 + 0.05 * (1 - ease))
+        return ('center', 0.75)
+    
+    # 同时淡入
+    txt_clip = txt_clip.set_position(slide_up)
+    txt_clip = txt_clip.fadein(0.3)
+    
+    return txt_clip
+
+
+def add_scene_transitions(clips, transition_type='fade', transition_duration=0.5):
+    """
+    为场景之间添加转场效果
+    
+    Args:
+        clips: 视频片段列表
+        transition_type: 转场类型 ('fade', 'slide', 'zoom')
+        transition_duration: 转场时长(秒)
+    
+    Returns:
+        添加了转场的片段列表
+    """
+    if len(clips) <= 1:
+        return clips
+    
+    from moviepy.editor import concatenate_videoclips
+    
+    result_clips = []
+    
+    for i, clip in enumerate(clips):
+        if i == 0:
+            # 第一个片段只添加淡出
+            result_clips.append(clip.fadeout(transition_duration))
+        elif i == len(clips) - 1:
+            # 最后一个片段只添加淡入
+            result_clips.append(clip.fadein(transition_duration))
+        else:
+            # 中间片段添加淡入淡出
+            result_clips.append(clip.fadein(transition_duration).fadeout(transition_duration))
+    
+    return result_clips
 
 # 🎭 情绪-参数路由表 (Emotion-Parameter Routing Table)
 # 基于“语义-情绪映射”的工业化架构
@@ -651,12 +1003,20 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
         txt_clip = txt_clip.set_mask(ImageClip(alpha_array, ismask=True).set_duration(dur))
         txt_clip = txt_clip.set_position(('center', 0.75), relative=True)
         
-        scene_clips.append(CompositeVideoClip([bg, txt_clip]).set_audio(audio_clip))
+        # 🎬 添加动画效果（根据风格选择动画策略）
+        st.write(f"🎬 为分镜 {i+1} 添加 AI 转场动画...")
+        animated_scene = create_animated_scene(bg, txt_clip, dur, style_name, scene_index=i)
+        
+        scene_clips.append(animated_scene.set_audio(audio_clip))
 
-    # 3. 最终压制与 BGM 混音
-    if not scene_clips: return False
+    # 3. 添加场景间转场效果
+    st.write("🎬 添加场景间转场过渡...")
+    scene_clips_with_transitions = add_scene_transitions(scene_clips, transition_type='fade')
     
-    final = concatenate_videoclips(scene_clips, method="compose")
+    # 4. 最终压制与 BGM 混音
+    if not scene_clips_with_transitions: return False
+    
+    final = concatenate_videoclips(scene_clips_with_transitions, method="compose")
     
     # 🎵 使用新的 BGM 风格路由系统
     if style_name:

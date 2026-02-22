@@ -68,12 +68,33 @@ def init_session_state():
 
 
 def load_api_keys():
-    """从环境或 secrets 加载 API Keys"""
+    """从环境或 secrets 加载 API Keys
+    
+    支持两种格式：
+    1. 扁平格式: TIANAPI_KEY, DEEPSEEK_KEY, ZHIPU_KEY, PEXELS_KEY
+    2. 嵌套格式: tianapi.key, deepseek.key, zhipu.key, pexels.key
+    """
+    # 优先尝试扁平格式（Streamlit Cloud 常用）
+    tianapi = st.secrets.get("TIANAPI_KEY", "")
+    deepseek = st.secrets.get("DEEPSEEK_KEY", "")
+    zhipu = st.secrets.get("ZHIPU_KEY", "")
+    pexels = st.secrets.get("PEXELS_KEY", "")
+    
+    # 如果扁平格式为空，尝试嵌套格式
+    if not tianapi and "tianapi" in st.secrets:
+        tianapi = st.secrets.get("tianapi", {}).get("key", "")
+    if not deepseek and "deepseek" in st.secrets:
+        deepseek = st.secrets.get("deepseek", {}).get("key", "")
+    if not zhipu and "zhipu" in st.secrets:
+        zhipu = st.secrets.get("zhipu", {}).get("key", "")
+    if not pexels and "pexels" in st.secrets:
+        pexels = st.secrets.get("pexels", {}).get("key", "")
+    
     return {
-        'tianapi': st.secrets.get("tianapi", {}).get("key", ""),
-        'deepseek': st.secrets.get("deepseek", {}).get("key", ""),
-        'zhipu': st.secrets.get("zhipu", {}).get("key", ""),
-        'pexels': st.secrets.get("pexels", {}).get("key", "")
+        'tianapi': tianapi,
+        'deepseek': deepseek,
+        'zhipu': zhipu,
+        'pexels': pexels
     }
 
 
