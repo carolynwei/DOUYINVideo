@@ -148,9 +148,9 @@ class ZhipuClient(APIClient):
         }
     
     def generate_image(self, prompt: str, size: str = "1024x1920") -> APIResponse:
-        """生成图片（CogView-3-Plus）"""
+        """生成图片（CogView-4）"""
         payload = {
-            "model": "cogview-3-plus",
+            "model": "cogview-4",
             "prompt": prompt,
             "size": size
         }

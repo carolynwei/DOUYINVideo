@@ -570,7 +570,7 @@ def generate_images_zhipu(scenes_data, api_key, style_config=None, use_video_mod
     🎬 调用智谱 AI - VideoTaxi Cinematography v3.0 导演定焦版
     
     支持两种模式：
-    1. CogView-3-Plus: 图片生成（默认）
+    1. CogView-4: 图片生成（默认，最新版）
     2. CogVideoX-3: 视频生成（当 use_video_model=True）
     
     核心升级：
@@ -586,7 +586,7 @@ def generate_images_zhipu(scenes_data, api_key, style_config=None, use_video_mod
         media_type = "视频"
     else:
         url = "https://open.bigmodel.cn/api/paas/v4/images/generations".strip()
-        model_name = "cogview-3-plus"
+        model_name = "cogview-4"
         file_ext = "jpg"
         media_type = "图片"
     

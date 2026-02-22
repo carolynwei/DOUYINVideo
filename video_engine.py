@@ -1149,7 +1149,7 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
     
     # 1. 资源生成
     media_type = "视频" if use_video_model else "图片"
-    st.info(f"🎬 使用智谱 {'CogVideoX-3' if use_video_model else 'CogView-3-Plus'} 生成{media_type}...")
+    st.info(f"🎬 使用智谱 {'CogVideoX-3' if use_video_model else 'CogView-4'} 生成{media_type}...")
     
     image_paths = generate_images_zhipu(scenes_data, zhipu_key, use_video_model=use_video_model)
     audio_files = generate_all_audios_sync(scenes_data, voice_id)  # 传递 voice_id

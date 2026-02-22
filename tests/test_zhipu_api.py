@@ -14,12 +14,12 @@ headers = {
 }
 
 payload = {
-    "model": "cogview-3-plus",
+    "model": "cogview-4",
     "prompt": "A beautiful sunset over the ocean, cinematic lighting, 4k quality",
     "size": "1024x1920"  # 修复：改为16的整数倍
 }
 
-print("🧪 正在测试智谱 CogView-3-Plus API...")
+print("🧪 正在测试智谱 CogView-4 API...")
 print(f"📡 URL: {url}")
 print(f"🔑 Key: {ZHIPU_KEY[:20]}...{ZHIPU_KEY[-10:]}")
 print(f"📝 Prompt: {payload['prompt']}")
