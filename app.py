@@ -923,11 +923,12 @@ with tab_script:
                 else:
                     st.error(f"❌ 积分不足！当前操作需要 {model_cost} 积分。请明日签到或更换低消耗模型。")
 
-    with col2:
-        st.subheader("✍️ 编导微调台")
-            
-        # 🎯 版本管理：显示历史版本切换下拉框
-        if len(st.session_state.script_versions) > 0:
+    # ==================== 编导微调台（另起一行，全宽显示）====================
+    st.markdown("---")
+    st.subheader("✍️ 编导微调台")
+    
+    # 🎯 版本管理：显示历史版本切换下拉框
+    if len(st.session_state.script_versions) > 0:
             st.caption(f"💾 已保存 {len(st.session_state.script_versions)} 个版本")
                 
             # 构造版本选项列表
@@ -955,72 +956,72 @@ with tab_script:
                 st.rerun()
                 
             st.markdown("---")
-            
-        # 显示剧本编辑器
-        if st.session_state.scenes_data:
-            # 🔒 根据状态决定是否禁用编辑
-            is_locked = (st.session_state.workflow_state == 'locked')
+        
+    # 显示剧本编辑器
+    if st.session_state.scenes_data:
+        # 🔒 根据状态决定是否禁用编辑
+        is_locked = (st.session_state.workflow_state == 'locked')
                 
-            if is_locked:
-                st.info("🔒 剧本已锁定，点击下方“🔓 解锁重新编辑”恢复修改")
-            else:
-                st.caption("💡 提示：你可以双击单元格修改文案，或调整提示词以改变画风")
+        if is_locked:
+            st.info("🔒 剧本已锁定，点击下方'🔓 解锁重新编辑'恢复修改")
+        else:
+            st.caption("💡 提示：你可以双击单元格修改文案，或调整提示词以改变画风")
                 
-            # 必须将编辑后的数据存下来
-            edited_scenes = st.data_editor(
-                st.session_state.scenes_data,
-                column_config={
-                    "narration": st.column_config.TextColumn("🎹️ 口播文案", width="medium"),
-                    "image_prompt": st.column_config.TextColumn("🎨 画面提示词", width="large"),
-                },
-                hide_index=True, 
-                num_rows="dynamic",
-                disabled=is_locked,  # 🔒 锁定后禁用编辑
-                key=f"data_editor_{st.session_state.workflow_state}"  # 使用动态key确保重新渲染
-            )
+        # 必须将编辑后的数据存下来
+        edited_scenes = st.data_editor(
+            st.session_state.scenes_data,
+            column_config={
+                "narration": st.column_config.TextColumn("🎹️ 口播文案", width="medium"),
+                "image_prompt": st.column_config.TextColumn("🎨 画面提示词", width="large"),
+            },
+            hide_index=True, 
+            num_rows="dynamic",
+            disabled=is_locked,  # 🔒 锁定后禁用编辑
+            key=f"data_editor_{st.session_state.workflow_state}"  # 使用动态key确保重新渲染
+        )
             
-            # 🔥 关键修复：实时同步编辑后的数据回 session_state
-            # 这样删除、新增行的操作才能生效
-            if not is_locked and edited_scenes != st.session_state.scenes_data:
-                st.session_state.scenes_data = edited_scenes
+        # 🔥 关键修复：实时同步编辑后的数据回 session_state
+        # 这样删除、新增行的操作才能生效
+        if not is_locked and edited_scenes != st.session_state.scenes_data:
+            st.session_state.scenes_data = edited_scenes
                 
-            st.markdown("---")
+        st.markdown("---")
             
-            # 🔍 SSML 质量检查器（仅在 draft 状态下显示）
-            if st.session_state.workflow_state == 'draft' and st.session_state.scenes_data:
-                with st.expander("🔍 TTS 情绪标注质量检查", expanded=False):
-                    st.caption("💡 检查剧本中的 SSML 情绪标签，确保语音合成具备情绪表现力")
+        # 🔍 SSML 质量检查器（仅在 draft 状态下显示）
+        if st.session_state.workflow_state == 'draft' and st.session_state.scenes_data:
+            with st.expander("🔍 TTS 情绪标注质量检查", expanded=False):
+                st.caption("💡 检查剧本中的 SSML 情绪标签，确保语音合成具备情绪表现力")
                     
-                    if st.button("🔍 开始检查", use_container_width=True):
-                        total, ssml_count, hook_ok, warns = check_ssml_quality(st.session_state.scenes_data)
+                if st.button("🔍 开始检查", use_container_width=True):
+                    total, ssml_count, hook_ok, warns = check_ssml_quality(st.session_state.scenes_data)
                         
-                        # 显示总体评分
-                        col_a, col_b, col_c = st.columns(3)
-                        col_a.metric("🎬 总分镜数", total)
-                        col_b.metric("🎵 SSML 标注", f"{ssml_count}/{total}")
-                        
-                        coverage = int((ssml_count / total * 100)) if total > 0 else 0
-                        if coverage >= 80:
-                            col_c.metric("🎯 覆盖率", f"{coverage}%", delta="优秀", delta_color="normal")
-                        elif coverage >= 50:
-                            col_c.metric("🎯 覆盖率", f"{coverage}%", delta="良好", delta_color="normal")
-                        else:
-                            col_c.metric("🎯 覆盖率", f"{coverage}%", delta="需改进", delta_color="inverse")
-                        
-                        # Hook 检查
-                        if hook_ok:
-                            st.success("✅ Hook（第1个分镜）已标注 SSML 情绪")
-                        else:
-                            st.error("❌ 关键问题：Hook 缺少 SSML 标注！")
-                        
-                        # 警告列表
-                        if warns:
-                            st.warning("⚠️ **检查结果**")
-                            for warn in warns:
-                                st.write(warn)
-                        else:
-                            st.balloons()
-                            st.success("🎉 完美！所有分镜都包含 SSML 情绪标注！")
+                    # 显示总体评分
+                    col_a, col_b, col_c = st.columns(3)
+                    col_a.metric("🎬 总分镜数", total)
+                    col_b.metric("🎵 SSML 标注", f"{ssml_count}/{total}")
+                    
+                    coverage = int((ssml_count / total * 100)) if total > 0 else 0
+                    if coverage >= 80:
+                        col_c.metric("🎯 覆盖率", f"{coverage}%", delta="优秀", delta_color="normal")
+                    elif coverage >= 50:
+                        col_c.metric("🎯 覆盖率", f"{coverage}%", delta="良好", delta_color="normal")
+                    else:
+                        col_c.metric("🎯 覆盖率", f"{coverage}%", delta="需改进", delta_color="inverse")
+                    
+                    # Hook 检查
+                    if hook_ok:
+                        st.success("✅ Hook（第1个分镜）已标注 SSML 情绪")
+                    else:
+                        st.error("❌ 关键问题：Hook 缺少 SSML 标注！")
+                    
+                    # 警告列表
+                    if warns:
+                        st.warning("⚠️ **检查结果**")
+                        for warn in warns:
+                            st.write(warn)
+                    else:
+                        st.balloons()
+                        st.success("🎉 完美！所有分镜都包含 SSML 情绪标注！")
                 
             st.markdown("---")
                 
