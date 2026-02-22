@@ -143,3 +143,65 @@ def clear_messages(user_id):
     c.execute("DELETE FROM chat_history WHERE user_id=?", (user_id,))
     conn.commit()
     conn.close()
+
+
+# ==================== 剧本版本历史持久化功能 ====================
+
+def init_script_versions_db():
+    """初始化剧本版本历史表"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS script_versions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            version INTEGER,
+            timestamp TEXT,
+            scenes TEXT,  -- JSON格式存储
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def save_script_version(user_id, version, timestamp, scenes):
+    """保存剧本版本到数据库"""
+    import json
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    scenes_json = json.dumps(scenes, ensure_ascii=False)
+    c.execute(
+        "INSERT INTO script_versions (user_id, version, timestamp, scenes) VALUES (?, ?, ?, ?)",
+        (user_id, version, timestamp, scenes_json)
+    )
+    conn.commit()
+    conn.close()
+
+def load_script_versions(user_id):
+    """加载用户的所有剧本版本历史"""
+    import json
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute(
+        "SELECT version, timestamp, scenes FROM script_versions WHERE user_id=? ORDER BY version ASC",
+        (user_id,)
+    )
+    rows = c.fetchall()
+    conn.close()
+    
+    versions = []
+    for row in rows:
+        versions.append({
+            'version': row[0],
+            'timestamp': row[1],
+            'scenes': json.loads(row[2])
+        })
+    return versions
+
+def clear_script_versions(user_id):
+    """清空用户的剧本版本历史"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("DELETE FROM script_versions WHERE user_id=?", (user_id,))
+    conn.commit()
+    conn.close()

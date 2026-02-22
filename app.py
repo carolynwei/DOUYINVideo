@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 from api_services import get_hot_topics, generate_script_json, generate_viral_script, refine_script_data
 from video_engine import render_ai_video_pipeline
-from db_manager import init_db, get_or_create_user, check_in, deduct_credits, get_user_credits, init_chat_db
+from db_manager import init_db, get_or_create_user, check_in, deduct_credits, get_user_credits, init_chat_db, init_script_versions_db, save_script_version, load_script_versions, clear_script_versions
 from chat_page import render_chat_page
 from tianapi_navigator import TianapiNavigator, auto_pilot_generate
 from scheduler_tower import SchedulerTower, FeedbackDatabase, DataAwareNavigator
@@ -407,11 +407,15 @@ def check_ssml_quality(scenes_data):
     return total_scenes, ssml_count, hook_has_ssml, warnings
 
 # 🎯 渐进式工作流状态管理
-if 'script_versions' not in st.session_state: st.session_state.script_versions = []  # 版本历史
-if 'current_version_index' not in st.session_state: st.session_state.current_version_index = -1  # -1表示无版本
 if 'workflow_state' not in st.session_state: st.session_state.workflow_state = 'draft'  # draft → locked → producing → completed
-if 'chat_history' not in st.session_state: st.session_state.chat_history = []  # 对话微调历史
 if 'voice_id' not in st.session_state: st.session_state.voice_id = "zh-CN-YunxiNeural"
+
+# 初始化数据库（包括剧本版本表）
+init_db()
+init_chat_db()
+init_script_versions_db()
+
+# 用户登录后从数据库加载历史记录（在侧边栏用户登录后处理）
 
 with st.sidebar:
     # 🎮 简洁的 Logo 区域
@@ -435,6 +439,12 @@ with st.sidebar:
         st.session_state.user_id = user_id
         user_info = get_or_create_user(user_id)
         
+        # 🔥 从数据库加载用户的历史剧本版本
+        if 'script_versions_loaded' not in st.session_state:
+            st.session_state.script_versions = load_script_versions(user_id)
+            st.session_state.current_version_index = len(st.session_state.script_versions) - 1 if st.session_state.script_versions else -1
+            st.session_state.script_versions_loaded = True
+            
         # 简洁的用户信息展示
         col_cred, col_btn = st.columns([1, 1])
         with col_cred:
@@ -447,6 +457,10 @@ with st.sidebar:
                     st.rerun()
                 else:
                     st.info(msg)
+                    
+        # 显示历史版本数量
+        if st.session_state.script_versions:
+            st.caption(f"📚 已保存 {len(st.session_state.script_versions)} 个剧本版本")
     else:
         st.warning("👈 请先登录")
         st.stop()
@@ -1092,19 +1106,25 @@ with tab_script:
                     
                 with col_lock:
                     if st.button("🔒 锁定剧本", type="primary", use_container_width=True, help="确认剧本，进入生产阶段"):
-                        # 保存当前版本
+                        # 保存当前版本到内存和数据库
                         from datetime import datetime
+                        timestamp = datetime.now().strftime("%H:%M")
+                        version_num = len(st.session_state.script_versions) + 1
+                        
                         version = {
-                            'version': len(st.session_state.script_versions) + 1,
-                            'timestamp': datetime.now().strftime("%H:%M"),
+                            'version': version_num,
+                            'timestamp': timestamp,
                             'scenes': edited_scenes.copy()
                         }
                         st.session_state.script_versions.append(version)
                         st.session_state.current_version_index = len(st.session_state.script_versions) - 1
+                        
+                        # 🔥 持久化到数据库
+                        save_script_version(user_id, version_num, timestamp, edited_scenes.copy())
                             
                         # 转换状态为 locked
                         st.session_state.workflow_state = 'locked'
-                        st.success("✅ 剧本已锁定！")
+                        st.success("✅ 剧本已锁定！已保存到历史记录")
                         st.rerun()
                 
             elif st.session_state.workflow_state == 'locked':
