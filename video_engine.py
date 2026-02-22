@@ -142,35 +142,31 @@ def create_animated_scene(bg_clip, txt_clip, duration, style_name=None, scene_in
     Returns:
         合成后的动画场景
     """
-    # 根据风格选择动画策略 - 6大升级版爆款风格
-    if style_name and "万物有灵" in style_name:
-        # 万物有灵：低机位缓慢推进，营造童话感和观察视角
-        bg_animated = apply_cinematic_ken_burns(bg_clip, duration, zoom_factor=1.08, direction='in')
+    # 根据风格选择动画策略 - 5大升级版爆款风格
+    if style_name and "治愈系" in style_name:
+        # 治愈系·观察者：低角度缓慢推进，营造电影质感
+        bg_animated = apply_cinematic_ken_burns(bg_clip, duration, zoom_factor=1.06, direction='in')
         
-    elif style_name and "认知唤醒" in style_name:
-        # 认知唤醒：温和的光影流动，营造启发感
+    elif style_name and "认知重塑" in style_name:
+        # 认知重塑·破壁人：稳定推进，营造科技感和权威感
+        bg_animated = apply_cinematic_push(bg_clip, duration, intensity=1.12)
+        
+    elif style_name and "逆袭见证" in style_name:
+        # 逆袭见证·养成系：真实Vlog感，轻微手持晃动
         bg_animated = apply_gentle_float(bg_clip, duration)
         
-    elif style_name and "共创养成" in style_name:
-        # 共创养成：真实Vlog感，轻微手持晃动
-        bg_animated = apply_gentle_float(bg_clip, duration)
-        
-    elif style_name and "POV代入" in style_name:
-        # POV代入·影子：第三人称跟随视角
-        bg_animated = apply_first_person_walk(bg_clip, duration, speed=0.8)
-        
-    elif style_name and "情绪升华" in style_name:
-        # 情绪升华·破晓：从压抑到释放的视觉转变
+    elif style_name and "情绪过山车" in style_name:
+        # 情绪过山车·发疯艺术家：从压抑到爆发的视觉转变
         if scene_index < 3:
-            # 前期：震动 + 快速剪辑感
-            bg_animated = apply_shake_effect(bg_clip, duration, intensity=0.015)
+            # 前期：震动 + 快速剪辑感（压抑）
+            bg_animated = apply_shake_effect(bg_clip, duration, intensity=0.02)
         else:
-            # 后期：平静的长镜头感
-            bg_animated = apply_cinematic_ken_burns(bg_clip, duration, zoom_factor=1.05, direction='out')
+            # 后期：爆发式缩放（幻想世界）
+            bg_animated = apply_zoom_pulse(bg_clip, duration, pulse_count=3, intensity=0.08)
         
-    elif style_name and "解忧陪伴" in style_name:
-        # 解忧陪伴·树洞：固定机位长镜头，营造陪伴感
-        bg_animated = apply_cinematic_ken_burns(bg_clip, duration, zoom_factor=1.03, direction='in')
+    elif style_name and "萌即正义" in style_name:
+        # 萌即正义·哲学大师：快速切换感，配合洗脑节奏
+        bg_animated = apply_meme_zoom(bg_clip, duration)
         
     else:
         # 默认：电影感 Ken Burns 效果，交替方向
@@ -497,14 +493,13 @@ def get_bgm_by_style(style_name, video_duration):
         AudioFileClip: 处理后的 BGM 音频剗辑，已调整音量和时长
     """
     # 风格与文件夹的映射
-    # 风格与文件夹的映射 - 6大升级版爆款风格
+    # 风格与文件夹的映射 - 5大升级版爆款风格
     style_folder_map = {
-        "🐱 万物有灵·叙事者": "growth",      # 治愈系音乐
-        "💡 认知唤醒·灯塔": "assassin",      # 史诗感音乐
-        "🤝 共创养成·家人": "growth",        # 温暖音乐
-        "🎭 POV代入·影子": "pov",            # 氛围音乐
-        "⚡ 情绪升华·破晓": "venting",        # 情绪起伏音乐
-        "🧘 解忧陪伴·树洞": "growth"         # Lofi音乐
+        "🎬 治愈系·观察者": "growth",         # 治愈系音乐
+        "🎭 认知重塑·破壁人": "assassin",     # 史诗感音乐
+        "🚀 逆袭见证·养成系": "growth",       # 温暖音乐
+        "🤯 情绪过山车·发疯艺术家": "venting", # 情绪起伏音乐
+        "🐕 萌即正义·哲学大师": "meme"        # 洗脑神曲
     }
     
     folder_name = style_folder_map.get(style_name, "assassin")

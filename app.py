@@ -60,7 +60,7 @@ def init_session_state():
     if 'voice_id' not in st.session_state:
         st.session_state.voice_id = "zh-CN-YunxiNeural"
     if 'script_mode' not in st.session_state:
-        st.session_state.script_mode = "💡 认知唤醒·灯塔"
+        st.session_state.script_mode = "🎭 认知重塑·破壁人"
     if 'model_id' not in st.session_state:
         st.session_state.model_id = "deepseek-chat"
     if 'model_cost' not in st.session_state:
@@ -118,66 +118,15 @@ VOICE_MAPPING = {
 def render_sidebar(api_keys):
     """渲染侧边栏 - 品牌监控座舱"""
     with st.sidebar:
-        # ===== 品牌监控区：双口号 + 霓虹效果 =====
+        # ===== 品牌监控区：双口号展示 =====
+        # 使用 Streamlit 原生组件 + 简单 HTML，避免 CSS 动画
         st.markdown("""
-        <div style="
-            background: linear-gradient(135deg, rgba(255,49,49,0.08) 0%, rgba(13,17,23,0.95) 100%);
-            border: 1px solid rgba(255,49,49,0.25);
-            border-radius: 12px;
-            padding: 20px 15px;
-            text-align: center;
-            margin-bottom: 20px;
-        ">
-            <!-- Logo -->
-            <div style="font-size: 48px; margin-bottom: 8px;">🚖</div>
-            
-            <!-- 品牌名 - 霓虹效果 -->
-            <div style="
-                font-size: 26px;
-                font-weight: 900;
-                color: #FF3131;
-                text-shadow: 0 0 20px rgba(255,49,49,0.6), 0 0 40px rgba(255,49,49,0.3);
-                letter-spacing: -1px;
-                margin-bottom: 4px;
-            ">VIDEOTAXI</div>
-            
-            <!-- 品牌愿景 - 在抖音公路上自由驰骋 -->
-            <div style="
-                font-size: 11px;
-                color: #8b949e;
-                letter-spacing: 2px;
-                text-transform: uppercase;
-                margin-bottom: 15px;
-            ">在抖音公路上自由驰骋</div>
-            
-            <!-- 商业承诺 - 7x24跑单状态 -->
-            <div style="
-                background: linear-gradient(90deg, #FF3131 0%, #8b0000 100%);
-                padding: 8px 12px;
-                border-radius: 6px;
-                box-shadow: 0 4px 15px rgba(255,49,49,0.4);
-            ">
-                <div style="
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                ">
-                    <!-- 脉冲点（静态发光效果） -->
-                    <div style="
-                        width: 8px;
-                        height: 8px;
-                        background: #fff;
-                        border-radius: 50%;
-                        box-shadow: 0 0 10px rgba(255,255,255,0.8), 0 0 20px rgba(255,255,255,0.4);
-                    "></div>
-                    <span style="
-                        font-size: 13px;
-                        font-weight: 700;
-                        color: #fff;
-                        letter-spacing: 0.5px;
-                    ">7×24H 流量跑单中</span>
-                </div>
+        <div style="text-align: center; padding: 15px; margin-bottom: 15px; border: 1px solid #FF3131; border-radius: 10px;">
+            <div style="font-size: 42px; margin-bottom: 5px;">🚖</div>
+            <div style="font-size: 24px; font-weight: bold; color: #FF3131; margin-bottom: 5px;">VIDEOTAXI</div>
+            <div style="font-size: 11px; color: #888; margin-bottom: 10px;">在抖音公路上自由驰骋</div>
+            <div style="background: #FF3131; padding: 6px 10px; border-radius: 5px; display: inline-block;">
+                <span style="color: white; font-size: 12px; font-weight: bold;">● 7×24H 流量跑单中</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -276,7 +225,6 @@ def main():
         position: relative;
         overflow: hidden;
     ">
-        <!-- 装饰性光效 -->
         <div style="
             position: absolute;
             top: -50%;

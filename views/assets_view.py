@@ -33,91 +33,22 @@ def render_assets_view():
     </div>
     """, unsafe_allow_html=True)
     
-    # ===== 跑单里程表（商业承诺可视化）=====
+    # ===== 跑单里程表（简化版）=====
     st.markdown("""
-    <div style="
-        background: linear-gradient(135deg, rgba(255,49,49,0.1) 0%, rgba(13,17,23,0.95) 50%, rgba(255,49,49,0.05) 100%);
-        border: 1px solid rgba(255,49,49,0.2);
-        border-radius: 16px;
-        padding: 25px 20px;
-        margin-bottom: 25px;
-    ">
-        <!-- 顶部标签 -->
-        <div style="
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 15px;
-        ">
-            <div style="
-                width: 10px;
-                height: 10px;
-                background: #FF3131;
-                border-radius: 50%;
-                box-shadow: 0 0 10px rgba(255,49,49,0.8), 0 0 20px rgba(255,49,49,0.4);
-            "></div>
-            <span style="
-                font-size: 11px;
-                color: #FF3131;
-                font-weight: 600;
-                letter-spacing: 1px;
-                text-transform: uppercase;
-            ">🚖 流量跑单实时监控</span>
-        </div>
-        
-        <!-- 主标题 -->
-        <div style="
-            font-size: 14px;
-            color: #8b949e;
-            margin-bottom: 8px;
-        ">让流量为你 7×24 小时跑单</div>
-        
-        <!-- 大数字 - 累计跑单时长 -->
-        <div style="
-            display: flex;
-            align-items: baseline;
-            gap: 10px;
-            margin-bottom: 5px;
-        ">
-            <span style="
-                font-size: 48px;
-                font-weight: 800;
-                color: #FF3131;
-                font-family: 'SF Mono', 'Courier New', monospace;
-                text-shadow: 0 0 20px rgba(255,49,49,0.4);
-            ">14:22:36</span>
-            <span style="
-                font-size: 14px;
-                color: #8b949e;
-            ">今日累计</span>
-        </div>
-        
-        <!-- 副数据 -->
-        <div style="
-            display: flex;
-            gap: 30px;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid rgba(255,49,49,0.1);
-        ">
-            <div>
-                <div style="font-size: 24px; font-weight: 700; color: #fff;">{}</div>
-                <div style="font-size: 11px; color: #8b949e;">总视频数</div>
-            </div>
-            <div>
-                <div style="font-size: 24px; font-weight: 700; color: #fff;">{}</div>
-                <div style="font-size: 11px; color: #8b949e;">总播放量</div>
-            </div>
-            <div>
-                <div style="font-size: 24px; font-weight: 700; color: #fff;">{}</div>
-                <div style="font-size: 11px; color: #8b949e;">热门作品</div>
-            </div>
+    <div style="border: 1px solid #FF3131; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+        <div style="font-size: 12px; color: #FF3131; margin-bottom: 10px;">🚖 流量跑单实时监控</div>
+        <div style="font-size: 13px; color: #666; margin-bottom: 10px;">让流量为你 7×24 小时跑单</div>
+        <div style="font-size: 36px; font-weight: bold; color: #FF3131; margin-bottom: 15px;">14:22:36</div>
+        <div style="display: flex; gap: 20px;">
+            <div><span style="font-size: 20px; font-weight: bold; color: #333;">{}</span><br><span style="font-size: 11px; color: #666;">总视频数</span></div>
+            <div><span style="font-size: 20px; font-weight: bold; color: #333;">{}</span><br><span style="font-size: 11px; color: #666;">总播放量</span></div>
+            <div><span style="font-size: 20px; font-weight: bold; color: #333;">{}</span><br><span style="font-size: 11px; color: #666;">热门作品</span></div>
         </div>
     </div>
     """.format(
         len(st.session_state.get('script_versions', [])),
-        "0",  # TODO: 从数据库获取
-        "暂无"  # TODO: 从数据库获取
+        "0",
+        "暂无"
     ))
     
     st.divider()
