@@ -144,7 +144,7 @@ def generate_images_zhipu(scenes_data, api_key):
             image_paths.append(None)
             continue
             
-        payload = {"model": "cogview-3-plus", "prompt": scene['image_prompt'], "size": "1080x1920"}
+        payload = {"model": "cogview-3-plus", "prompt": scene['image_prompt'], "size": "1024x1920"}
         st.toast(f"🎨 正在绘制分镜 {i+1}/{len(scenes_data)} ...")
         
         try:
