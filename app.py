@@ -715,6 +715,11 @@ with tab_script:
                 disabled=is_locked,  # 🔒 锁定后禁用编辑
                 key=f"data_editor_{st.session_state.workflow_state}"  # 使用动态key确保重新渲染
             )
+            
+            # 🔥 关键修复：实时同步编辑后的数据回 session_state
+            # 这样删除、新增行的操作才能生效
+            if not is_locked and edited_scenes != st.session_state.scenes_data:
+                st.session_state.scenes_data = edited_scenes
                 
             st.markdown("---")
                 
