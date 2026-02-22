@@ -23,12 +23,16 @@ from moviepy.editor import AudioFileClip, ImageClip, ColorClip, CompositeVideoCl
 # 🔑 字体路径配置：多级降级策略确保100%可用
 def get_font_path():
     """智能检测可用的中文字体路径"""
-    # 1. 优先：仓库中的字体文件（绝对路径）
-    repo_font = os.path.join(os.path.dirname(__file__), "font.ttf")
+    # 1. 优先：assets目录中的字体文件（绝对路径）
+    repo_font = os.path.join(os.path.dirname(__file__), "assets", "font.ttf")
     if os.path.exists(repo_font):
         return repo_font
     
-    # 2. 降级：当前工作目录的字体文件
+    # 2. 降级：当前工作目录的assets/font.ttf
+    if os.path.exists("assets/font.ttf"):
+        return os.path.abspath("assets/font.ttf")
+    
+    # 3. 兼容旧版本：根目录的font.ttf（向后兼容）
     if os.path.exists("font.ttf"):
         return os.path.abspath("font.ttf")
     
@@ -91,17 +95,21 @@ def get_bgm_by_style(style_name, video_duration):
             st.info(f"🎵 使用 {style_name} 风格 BGM: {selected_bgm}")
         else:
             # 如果目录为空，使用默认 BGM
-            bgm_path = "bgm.mp3"
+            bgm_path = "assets/bgm.mp3"
             st.warning(f"⚠️ {folder_name} 目录为空，使用默认 BGM")
     else:
         # 目录不存在，使用默认 BGM
-        bgm_path = "bgm.mp3"
+        bgm_path = "assets/bgm.mp3"
         st.warning(f"⚠️ {bgm_dir} 不存在，使用默认 BGM")
     
-    # 检查默认 BGM 是否存在
+    # 检查默认 BGM 是否存在（兼容旧版本）
     if not os.path.exists(bgm_path):
-        st.error("❌ 未找到 BGM 文件！请上传 bgm.mp3 或在 assets/bgm 目录下添加风格 BGM")
-        return None
+        # 尝试旧版本路径
+        if os.path.exists("bgm.mp3"):
+            bgm_path = "bgm.mp3"
+        else:
+            st.error("❌ 未找到 BGM 文件！请在 assets 目录下添加 bgm.mp3")
+            return None
     
     try:
         # 加载音频
@@ -445,9 +453,16 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
             st.warning("⚠️ BGM 加载失败，使用原始音频")
     else:
         # 如果没有指定风格，尝试使用默认 BGM（兼容旧版本）
-        if os.path.exists("bgm.mp3"):
+        default_bgm_paths = ["assets/bgm.mp3", "bgm.mp3"]
+        bgm_path = None
+        for path in default_bgm_paths:
+            if os.path.exists(path):
+                bgm_path = path
+                break
+        
+        if bgm_path:
             st.info("🎵 使用默认 BGM")
-            bgm = AudioFileClip("bgm.mp3").volumex(0.08).set_duration(final.duration)
+            bgm = AudioFileClip(bgm_path).volumex(0.08).set_duration(final.duration)
             final = final.set_audio(CompositeAudioClip([final.audio, bgm]))
 
     # 4. 导出 (优化参数防止云端内存溢出)

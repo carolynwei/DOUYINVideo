@@ -2,33 +2,62 @@
 .streamlit/secrets.toml
 .env
 
+# 数据库文件
+app_data.db
+*.db
+*.sqlite
+*.sqlite3
+
 # 临时文件
-temp_*.mp3
-temp_*.jpg
-temp_*.mp4
-*.mp4
+temp_*
 test_output.*
+*.tmp
+
+# 生成的视频和音频文件
+*.mp4
+*.mp3
+!assets/bgm/**/*.mp3  # 保留BGM资源库
+
+# 生成的图片文件
+*.jpg
+*.jpeg
+*.png
+!assets/**/*.png  # 保留静态资源
+!assets/**/*.jpg
 
 # Python 缓存
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.egg-info/
+dist/
+build/
 
 # 虚拟环境
 venv/
 env/
 ENV/
 douyin-video-env/
+conda-env/
 
 # IDE 配置
 .vscode/
 .idea/
 .qoder/
+*.swp
+*.swo
+*~
 
 # 系统文件
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# 测试文件
-test_pipeline.py
+# 日志文件
+*.log
+logs/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
