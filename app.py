@@ -7,10 +7,13 @@ VideoTaxi (VibeDrive) - 认知刺客创作平台
 
 import streamlit as st
 import os
+from datetime import datetime
 from api_services import get_hot_topics, generate_script_json, generate_viral_script, refine_script_data
 from video_engine import render_ai_video_pipeline
 from db_manager import init_db, get_or_create_user, check_in, deduct_credits, get_user_credits, init_chat_db
 from chat_page import render_chat_page
+from tianapi_navigator import TianapiNavigator, auto_pilot_generate
+from scheduler_tower import SchedulerTower, FeedbackDatabase, DataAwareNavigator
 
 # 启动时初始化数据库
 init_db()
@@ -18,302 +21,231 @@ init_chat_db()  # 初始化聊天记录表
 
 st.set_page_config(page_title="🚖 VideoTaxi - 认知刺客创作平台", page_icon="🚖", layout="wide")
 
-# 🎨 CSS 样式注入 - 工业电影感 + SaaS 级交互 + 主题切换
-def inject_custom_css(theme='dark'):
+# 🎮 赛博驾驶舱主题 (Cyber Taxi Dashboard Theme)
+def set_cyber_taxi_theme():
     """
-    根据主题动态注入 CSS 样式
-    
-    Args:
-        theme: 'dark' 或 'light'
+    VideoTaxi 数字驾驶舱主题
+    拟物化 (Skeuomorphism) + 未来主义 (Futurism)
+    让用户像驾驶特斯拉一样操作 VideoTaxi
     """
-    # 主题配色方案
-    if theme == 'dark':
-        # 深色模式：碳素黑 + 刺客红
-        colors = {
-            'bg_main': '#0A0A0B',
-            'bg_secondary': '#161B22',
-            'bg_sidebar': '#0d1117',
-            'border': '#30363d',
-            'text': '#E6EDF3',
-            'text_secondary': '#8b949e',
-            'accent': '#FF3131',
-            'input_bg': '#0d1117',
-            'chat_bg': '#0d1117'
-        }
-    else:
-        # 浅色模式：白色 + 刺客红
-        colors = {
-            'bg_main': '#FFFFFF',
-            'bg_secondary': '#F6F8FA',
-            'bg_sidebar': '#F6F8FA',
-            'border': '#D0D7DE',
-            'text': '#24292F',
-            'text_secondary': '#57606A',
-            'accent': '#FF3131',
-            'input_bg': '#FFFFFF',
-            'chat_bg': '#F6F8FA'
-        }
-    
-    st.markdown(f"""
+    st.markdown("""
     <style>
-    /* 0. 全局背景和文字颜色 */
-    .stApp {{
-        background-color: {colors['bg_main']};
-        color: {colors['text']};
-    }}
+    /* —————— 全局背景：深邃渐变 —————— */
+    .stApp {
+        background: radial-gradient(circle at center, #1a1b25 0%, #050505 100%);
+        color: #E6EDF3;
+    }
     
-    /* 主内容区域 */
-    .main {{
-        background-color: {colors['bg_main']};
-        color: {colors['text']};
-    }}
-    
-    /* 所有标题和段落 */
-    .stMarkdown, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {{
-        color: {colors['text']} !important;
-    }}
-    
-    /* 1. 隐藏默认的顶部红线和多余边距 */
-    header {{visibility: hidden;}}
-    .main .block-container {{padding-top: 2rem;}}
-
-    /* 2. 按钮悬浮发光效果 */
-    .stButton>button {{
-        width: 100%;
-        border-radius: 5px;
-        border: 1px solid {colors['accent']};
+    .main {
         background: transparent;
-        color: {colors['accent']};
-        font-weight: bold;
+    }
+    
+    /* —————— 拟物化卡片：带边缘高光 —————— */
+    div[data-testid="stVerticalBlock"] > div {
+        background: rgba(22, 27, 34, 0.7);
+        border: 1px solid rgba(255, 49, 49, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+        backdrop-filter: blur(10px);
+        transition: all 0.4s ease;
+    }
+    
+    div[data-testid="stVerticalBlock"] > div:hover {
+        border-color: rgba(255, 49, 49, 0.3);
+        box-shadow: 0 0 30px rgba(255, 49, 49, 0.1);
+    }
+    
+    /* —————— 重点强调：刺客红呼吸灯效果 —————— */
+    .stMetric {
+        border-left: 3px solid #FF3131;
+        padding-left: 15px;
+        background: linear-gradient(90deg, rgba(255, 49, 49, 0.08) 0%, transparent 100%);
+        border-radius: 8px;
+        animation: metric-pulse 3s ease-in-out infinite;
+    }
+    
+    @keyframes metric-pulse {
+        0%, 100% { border-left-color: #FF3131; }
+        50% { border-left-color: #FF6161; }
+    }
+    
+    /* —————— 输入框：科幻扫描线效果 —————— */
+    .stTextInput input, .stTextArea textarea {
+        border: 1px solid #30363d !important;
+        background-color: #0d1117 !important;
+        color: #FF3131 !important;
+        font-family: 'Courier New', monospace;
         transition: all 0.3s ease;
-    }}
-    .stButton>button:hover {{
-        background: {colors['accent']};
-        color: white;
-        box-shadow: 0 0 20px rgba(255, 49, 49, 0.4);
-        transform: translateY(-2px);
-    }}
+    }
+    
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border-color: #FF3131 !important;
+        box-shadow: 0 0 15px rgba(255, 49, 49, 0.3) !important;
+        background: linear-gradient(90deg, #0d1117 0%, rgba(255, 49, 49, 0.05) 100%) !important;
+    }
 
-    /* 3. 侧边栏卡片化 */
-    [data-testid="stSidebar"] {{
-        border-right: 1px solid {colors['border']};
-        background-color: {colors['bg_sidebar']};
-    }}
+    /* —————— 自定义进度条：赛道条纹 —————— */
+    .stProgress > div > div > div {
+        background-image: linear-gradient(
+            45deg, 
+            #FF3131 25%, 
+            #8b0000 25%, 
+            #8b0000 50%, 
+            #FF3131 50%, 
+            #FF3131 75%, 
+            #8b0000 75%, 
+            #8b0000 100%
+        );
+        background-size: 40px 40px;
+        animation: progress-move 1s linear infinite;
+    }
     
-    /* 侧边栏内的文字 */
-    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] p, [data-testid="stSidebar"] label {{
-        color: {colors['text']} !important;
-    }}
-
-    /* 4. 聊天气泡专业化 */
-    [data-testid="stChatMessage"] {{
-        border: 1px solid {colors['border']};
+    @keyframes progress-move {
+        0% { background-position: 0 0; }
+        100% { background-position: 40px 40px; }
+    }
+    
+    /* —————— 按钮：电子脉冲效果 —————— */
+    .stButton>button {
+        width: 100%;
         border-radius: 8px;
-        padding: 1rem;
-        background-color: {colors['chat_bg']};
-        margin-bottom: 0.5rem;
-    }}
-    
-    /* 5. 表格专业化 */
-    .stDataFrame {{
-        border: 1px solid {colors['border']};
-        border-radius: 8px;
-    }}
-    
-    /* 表格内容颜色 */
-    .stDataFrame table {{
-        background-color: {colors['bg_secondary']};
-        color: {colors['text']};
-    }}
-    
-    /* 6. 输入框工业感 */
-    .stTextInput>div>div>input, .stTextArea textarea, .stSelectbox>div>div>div {{
-        background-color: {colors['input_bg']} !important;
-        border: 1px solid {colors['border']} !important;
-        border-radius: 5px;
-        color: {colors['text']} !important;
-    }}
-    
-    /* 输入框标签 */
-    .stTextInput label, .stTextArea label, .stSelectbox label, .stRadio label {{
-        color: {colors['text']} !important;
-    }}
-    
-    /* 7. Metric 卡片强化 */
-    [data-testid="stMetricValue"] {{
-        font-size: 2rem;
+        border: 1px solid #FF3131;
+        background: transparent;
+        color: #FF3131;
         font-weight: bold;
-        color: {colors['accent']};
-    }}
+        font-family: 'SF Mono', 'Courier New', monospace;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
     
-    [data-testid="stMetricLabel"] {{
-        color: {colors['text']} !important;
-    }}
+    .stButton>button::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 49, 49, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
     
-    /* 8. Tab 标签页样式 */
-    .stTabs [data-baseweb="tab-list"] {{
-        gap: 8px;
-    }}
+    .stButton>button:hover::before {
+        width: 300px;
+        height: 300px;
+    }
     
-    .stTabs [data-baseweb="tab"] {{
-        border-radius: 5px;
+    .stButton>button:hover {
+        background: #FF3131;
+        color: white;
+        box-shadow: 0 0 25px rgba(255, 49, 49, 0.5), 0 0 50px rgba(255, 49, 49, 0.3);
+        transform: translateY(-2px);
+        border-color: #FF6161;
+    }
+
+    /* —————— 侧边栏：数字驾驶舱 —————— */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+        border-right: 1px solid rgba(255, 49, 49, 0.2);
+    }
+    
+    [data-testid="stSidebar"] > div {
+        background: transparent;
+    }
+    
+    /* —————— Tab 切换：车载屏幕效果 —————— */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+        background: rgba(13, 17, 23, 0.8);
+        padding: 10px;
+        border-radius: 10px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background: transparent;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        color: #8b949e;
+        font-weight: 600;
         padding: 10px 20px;
-        background-color: {colors['bg_secondary']};
-        border: 1px solid {colors['border']};
-        color: {colors['text']};
-    }}
+        transition: all 0.3s ease;
+    }
     
-    .stTabs [aria-selected="true"] {{
-        background-color: {colors['accent']} !important;
-        color: white !important;
-    }}
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, rgba(255, 49, 49, 0.2) 0%, rgba(139, 0, 0, 0.1) 100%);
+        border-color: #FF3131;
+        color: #FF3131;
+        box-shadow: 0 0 20px rgba(255, 49, 49, 0.3);
+    }
     
-    /* 9. 信息框样式 */
-    .stAlert {{
+    /* —————— 数据卡片：3D 效果 —————— */
+    .stImage, .stVideo {
+        border-radius: 10px;
+        border: 1px solid #30363d;
+        overflow: hidden;
+        transition: all 0.4s ease;
+    }
+    
+    .stImage:hover, .stVideo:hover {
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 10px 40px rgba(255, 49, 49, 0.2);
+        border-color: #FF3131;
+    }
+    
+    /* —————— 警告框：系统故障风格 —————— */
+    .stAlert {
+        background: rgba(22, 27, 34, 0.9);
+        border-left: 4px solid #FF3131;
         border-radius: 8px;
-        border: 1px solid {colors['border']};
-        background-color: {colors['bg_secondary']};
-    }}
+        font-family: 'Courier New', monospace;
+    }
     
-    /* 10. Expander 样式 */
-    .streamlit-expanderHeader {{
-        background-color: {colors['bg_secondary']};
-        border: 1px solid {colors['border']};
-        color: {colors['text']} !important;
-    }}
+    /* —————— Expander：折叠面板 —————— */
+    .streamlit-expanderHeader {
+        background: rgba(22, 27, 34, 0.7);
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        color: #E6EDF3;
+        font-weight: 600;
+    }
     
-    .streamlit-expanderContent {{
-        background-color: {colors['bg_secondary']};
-        border: 1px solid {colors['border']};
-    }}
+    .streamlit-expanderHeader:hover {
+        border-color: #FF3131;
+        background: rgba(255, 49, 49, 0.05);
+    }
     
-    /* 11. Caption 文字 */
-    .stCaption {{
-        color: {colors['text_secondary']} !important;
-    }}
+    /* —————— 滚动条：赛道风格 —————— */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
     
-    /* 12. Radio 按钮 */
-    .stRadio>div {{
-        background-color: {colors['bg_secondary']};
+    ::-webkit-scrollbar-track {
+        background: #0d1117;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #FF3131 0%, #8b0000 100%);
         border-radius: 5px;
-        padding: 0.5rem;
-    }}
+    }
     
-    /* 13. Checkbox */
-    .stCheckbox label {{
-        color: {colors['text']} !important;
-    }}
+    ::-webkit-scrollbar-thumb:hover {
+        background: #FF3131;
+    }
     
-    /* 14. Toggle 开关 */
-    .stToggle label {{
-        color: {colors['text']} !important;
-    }}
-    
-    /* 15. Divider 分割线 */
-    hr {{
-        border-color: {colors['border']};
-    }}
-    
-    /* 16. 下拉框选项 */
-    [data-baseweb="popover"] {{
-        background-color: {colors['bg_secondary']} !important;
-    }}
-    
-    [data-baseweb="select"] > div {{
-        background-color: {colors['input_bg']} !important;
-        border-color: {colors['border']} !important;
-        color: {colors['text']} !important;
-    }}
-    
-    /* 17. 数据编辑器 */
-    .stDataEditor {{
-        background-color: {colors['bg_secondary']};
-    }}
-    
-    /* 18. 按钮primary类型 */
-    .stButton>button[kind="primary"] {{
-        background-color: {colors['accent']} !important;
-        color: white !important;
-        border: none !important;
-    }}
-    
-    .stButton>button[kind="primary"]:hover {{
-        background-color: #CC2828 !important;
-        box-shadow: 0 0 25px rgba(255, 49, 49, 0.6);
-    }}
-    
-    /* 19. Success/Error/Warning/Info 消息框 */
-    .stSuccess, .stError, .stWarning, .stInfo {{
+    /* —————— 选择框：电子面板 —————— */
+    .stSelectbox > div > div {
+        background: #0d1117;
+        border: 1px solid #30363d;
         border-radius: 8px;
-        border: 1px solid {colors['border']};
-    }}
+        color: #E6EDF3;
+    }
     
-    /* 20. Spinner 加载动画 */
-    .stSpinner > div {{
-        border-top-color: {colors['accent']} !important;
-    }}
-    
-    /* 21. Progress Bar 进度条 */
-    .stProgress > div > div {{
-        background-color: {colors['accent']} !important;
-    }}
-    
-    /* 22. Toast 消息 */
-    [data-testid="stToast"] {{
-        background-color: {colors['bg_secondary']} !important;
-        border: 1px solid {colors['border']} !important;
-        color: {colors['text']} !important;
-    }}
-    
-    /* 23. Status 状态容器 */
-    [data-testid="stStatus"] {{
-        background-color: {colors['bg_secondary']} !important;
-        border: 1px solid {colors['border']} !important;
-    }}
-    
-    /* 24. Code 代码块 */
-    code {{
-        background-color: {colors['bg_secondary']} !important;
-        color: {colors['text']} !important;
-        border: 1px solid {colors['border']};
-    }}
-    
-    /* 25. 数字输入框 */
-    .stNumberInput input {{
-        background-color: {colors['input_bg']} !important;
-        border: 1px solid {colors['border']} !important;
-        color: {colors['text']} !important;
-    }}
-    
-    /* 26. Slider 滑块 */
-    .stSlider {{
-        color: {colors['text']} !important;
-    }}
-    
-    /* 27. File Uploader 文件上传 */
-    [data-testid="stFileUploader"] {{
-        background-color: {colors['bg_secondary']};
-        border: 1px solid {colors['border']};
-    }}
-    
-    /* 28. Download Button 下载按钮 */
-    .stDownloadButton > button {{
-        background-color: {colors['bg_secondary']} !important;
-        color: {colors['text']} !important;
-        border: 1px solid {colors['border']} !important;
-    }}
-    
-    /* 29. 侧边栏分割线 */
-    [data-testid="stSidebar"] hr {{
-        border-color: {colors['border']};
-    }}
-    
-    /* 30. 侧边栏标题 */
-    [data-testid="stSidebar"] h1, 
-    [data-testid="stSidebar"] h2, 
-    [data-testid="stSidebar"] h3 {{
-        color: {colors['text']} !important;
-    }}
+    .stSelectbox > div > div:hover {
+        border-color: #FF3131;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -321,8 +253,8 @@ def inject_custom_css(theme='dark'):
 if 'theme_mode' not in st.session_state:
     st.session_state.theme_mode = 'dark'  # 默认深色模式
 
-# 执行 CSS 注入（使用当前主题）
-inject_custom_css(st.session_state.theme_mode)
+# 🎮 启用赛博驾驶舱主题
+set_cyber_taxi_theme()
 
 # 💡 快速上手指南（折叠式）
 with st.expander("💡 快速上手指南 (点此展开)"):
@@ -534,6 +466,192 @@ with st.sidebar:
     st.caption(f"当前：{theme_options[current_theme]}")
     st.divider()
     
+    # 🛰️ 热点雷达 (Hotspot Radar)
+    st.header("📡 热点雷达 (Hotspot Radar)")
+    
+    # 初始化导航员
+    if 'navigator' not in st.session_state:
+        st.session_state.navigator = None
+    if 'missions' not in st.session_state:
+        st.session_state.missions = []
+    
+    # 刷新热点按钮
+    if st.button("🔄 刷新全网热点", use_container_width=True):
+        with st.spinner("正在扫描抖音热搜..."):
+            navigator = TianapiNavigator(tianapi_key)
+            st.session_state.navigator = navigator
+            st.session_state.missions = navigator.fetch_today_missions(num=5)
+            if st.session_state.missions:
+                st.success(f"✅ 获取到 {len(st.session_state.missions)} 个热点")
+            else:
+                st.error("❌ 获取热点失败")
+    
+    # 显示热点列表
+    if st.session_state.missions:
+        st.caption("💡 点击「锁定」将热点填入创作主题")
+        
+        for i, mission in enumerate(st.session_state.missions):
+            heat_color = mission.get('heat_color', 'gray')
+            with st.expander(f"{mission['heat_level']} {mission['topic'][:12]}..."):
+                st.write(f"**热度值**: {mission['hot_value']:,}")
+                st.write(f"**推荐风格**: {mission['recommended_style']}")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button(f"🚩 锁定", key=f"lock_{i}", use_container_width=True):
+                        # 将热点填入 session_state，供剧本生成使用
+                        st.session_state.selected_topic = mission['topic']
+                        st.session_state.selected_style = mission['recommended_style']
+                        st.toast(f"🎯 已锁定: {mission['topic']}")
+                        st.rerun()
+                
+                with col2:
+                    # 背景扩充按钮
+                    if st.button(f"🔍 扩充", key=f"expand_{i}", use_container_width=True):
+                        with st.spinner("正在分析热点背景..."):
+                            expansion = st.session_state.navigator.expand_topic_context(
+                                mission['topic'], 
+                                llm_api_key
+                            )
+                            if expansion['success']:
+                                st.session_state[f"expansion_{i}"] = expansion['expansion']
+                            else:
+                                st.error("扩充失败")
+                
+                # 显示扩充结果
+                if f"expansion_{i}" in st.session_state:
+                    exp = st.session_state[f"expansion_{i}"]
+                    st.markdown("---")
+                    st.markdown("**🎯 情绪母体**: " + exp.get('emotion_mother', '未知'))
+                    st.markdown("**👥 目标人群**: " + exp.get('target_audience', '未知'))
+                    st.markdown("**💥 争议潜力**: " + str(exp.get('controversy_potential', '未知')))
+                    
+                    with st.expander("查看详细分析"):
+                        st.markdown("**痛点:**")
+                        for p in exp.get('pain_points', []):
+                            st.markdown(f"- {p}")
+                        st.markdown("**切入角度:**")
+                        for a in exp.get('content_angles', []):
+                            st.markdown(f"- {a}")
+    
+    st.divider()
+    
+    # 🤖 全自动发车
+    st.header("🤖 全自动发车")
+    st.caption("一键执行：抓取热点 → 生成剧本 → 渲染视频")
+    
+    auto_num = st.number_input("生成数量", min_value=1, max_value=3, value=1, 
+                               help="一次自动生成多少个视频（建议1-3个）")
+    
+    if st.button("🚀 全自动发车", type="primary", use_container_width=True):
+        if not st.session_state.missions:
+            st.error("❌ 请先刷新热点雷达")
+        else:
+            # 执行全自动发车
+            with st.spinner("🚗 VideoTaxi 正在全自动跑单..."):
+                results = auto_pilot_generate(
+                    navigator=st.session_state.navigator,
+                    deepseek_key=llm_api_key,
+                    zhipu_key=zhipu_key,
+                    pexels_key=pexels_api_key,
+                    voice_id=st.session_state.get('voice_id', 'zh-CN-YunxiNeural'),
+                    num_missions=int(auto_num)
+                )
+                
+                # 显示结果
+                if results:
+                    success_videos = [r for r in results if r['status'] == 'success']
+                    if success_videos:
+                        st.balloons()
+                        st.success(f"🎉 成功生成 {len(success_videos)} 个视频！")
+                        
+                        # 提供下载
+                        for video in success_videos:
+                            if os.path.exists(video['video_file']):
+                                with open(video['video_file'], 'rb') as f:
+                                    st.download_button(
+                                        f"⬇️ 下载: {video['topic'][:10]}...",
+                                        data=f.read(),
+                                        file_name=video['video_file'],
+                                        mime="video/mp4",
+                                        key=f"dl_{video['topic']}"
+                                    )
+    
+    st.divider()
+    
+    # 🗼 调度塔台 (Scheduler Tower)
+    st.header("🗼 调度塔台")
+    st.caption("7x24小时无人值守自动驾驶")
+    
+    # 初始化反馈数据库
+    if 'feedback_db' not in st.session_state:
+        st.session_state.feedback_db = FeedbackDatabase()
+    
+    # 数据感应导航员报告
+    with st.expander("📊 数据感应报告"):
+        feedback_db = st.session_state.feedback_db
+        ranking = feedback_db.get_style_ranking()
+        
+        if ranking:
+            st.markdown("**🏆 风格表现排名**")
+            for i, item in enumerate(ranking[:3]):
+                medal = ["🥇", "🥈", "🥉"][i]
+                st.markdown(f"{medal} **{item['style'][:10]}...** - 均分: {item['avg_score']:.2f}")
+        else:
+            st.info("暂无历史数据，开始创作后会自动生成报告")
+        
+        # 最近7天统计
+        recent = feedback_db.get_recent_performance(days=7)
+        if recent:
+            st.markdown("---")
+            st.markdown(f"**📈 最近7天**: {len(recent)} 个视频")
+            avg_completion = sum(r.completion_rate for r in recent) / len(recent)
+            st.progress(avg_completion, text=f"平均完播率: {avg_completion*100:.1f}%")
+    
+    # 定时调度设置
+    st.markdown("---")
+    st.markdown("**⏰ 定时调度**")
+    
+    schedule_time = st.time_input("每日发车时间", value=datetime.strptime("04:00", "%H:%M").time())
+    schedule_num = st.number_input("每次生成数量", min_value=1, max_value=5, value=1, key="schedule_num")
+    
+    col_schedule, col_now = st.columns(2)
+    
+    with col_schedule:
+        if st.button("⏰ 设置定时", use_container_width=True):
+            st.info(f"⏰ 已设置每日 {schedule_time.strftime('%H:%M')} 自动发车")
+            st.caption("💡 提示：部署到服务器后可实现真正的7x24小时运行")
+    
+    with col_now:
+        if st.button("▶️ 立即执行", type="primary", use_container_width=True):
+            with st.spinner("🚗 调度塔台正在执行任务..."):
+                # 创建临时调度塔台执行一次
+                tower = SchedulerTower(
+                    tianapi_key=tianapi_key,
+                    deepseek_key=llm_api_key,
+                    zhipu_key=zhipu_key,
+                    pexels_key=pexels_api_key
+                )
+                results = tower.auto_drive_mission(num_videos=int(schedule_num))
+                
+                success_count = sum(1 for r in results if r['status'] == 'success')
+                if success_count > 0:
+                    st.success(f"✅ 成功生成 {success_count} 个视频！")
+                    for r in results:
+                        if r['status'] == 'success' and os.path.exists(r['video_file']):
+                            with open(r['video_file'], 'rb') as f:
+                                st.download_button(
+                                    f"⬇️ {r['topic'][:15]}...",
+                                    data=f.read(),
+                                    file_name=r['video_file'],
+                                    mime="video/mp4",
+                                    key=f"tower_dl_{r['video_id']}"
+                                )
+                else:
+                    st.error("❌ 任务执行失败")
+    
+    st.divider()
+    
     st.header("⚙️ 核心引擎设置")
     
     # 🔑 自动从 secrets 读取，不再使用 st.text_input
@@ -658,22 +776,46 @@ with tab_script:
             with st.spinner("扫描中..."):
                 st.session_state.hot_topics = get_hot_topics(tianapi_key)
                 
+        # 优先使用从热点雷达锁定的主题
+        default_topic = st.session_state.get('selected_topic', '')
+        
         if st.session_state.hot_topics:
-            selected_topic = st.selectbox("📌 选择目标：", st.session_state.hot_topics, help="从热搜榜单中选择一个话题")
+            # 如果有热点列表，使用 selectbox
+            if default_topic and default_topic in st.session_state.hot_topics:
+                selected_index = st.session_state.hot_topics.index(default_topic)
+            else:
+                selected_index = 0
+            selected_topic = st.selectbox("📌 选择目标：", st.session_state.hot_topics, 
+                                         index=selected_index,
+                                         help="从热搜榜单中选择一个话题")
         else:
-            st.info("👉 点击上方按钮获取热点")
-            selected_topic = st.text_input("或直接输入主题：", placeholder="例：内耗、裸辞、理财")
+            st.info("👉 点击上方按钮获取热点，或从左侧「热点雷达」锁定任务")
+            selected_topic = st.text_input("或直接输入主题：", 
+                                          value=default_topic,
+                                          placeholder="例：内耗、裸辞、理财")
         
         # 🎭 剧本生成风格选择（全新升级）
+        # 优先使用从热点雷达锁定的风格
+        default_style = st.session_state.get('selected_style', '🗡️ 认知刺客流（冲击力+优越感）')
+        
+        style_options = [
+            "🗡️ 认知刺客流（冲击力+优越感）",
+            "👍 听勝/养成系（互动率04+评论爆炸）",
+            "🎬 POV沉浸流（第一人称+代入感）",
+            "🔥 情绪宣泄流（极致反转+发疯文学）",
+            "🐱 Meme抗象流（低成本+病毒传播）"
+        ]
+        
+        # 找到默认风格的索引
+        if default_style in style_options:
+            default_style_index = style_options.index(default_style)
+        else:
+            default_style_index = 0
+        
         script_mode = st.radio(
             "🎭 选择剧本风格：",
-            [
-                "🗡️ 认知刺客流（冲击力+优越感）",
-                "👍 听勝/养成系（互动率04+评论爆炸）",
-                "🎬 POV沉浸流（第一人称+代入感）",
-                "🔥 情绪宣泄流（极致反转+发疯文学）",
-                "🐱 Meme抗象流（低成本+病毒传播）"
-            ],
+            style_options,
+            index=default_style_index,
             help="选择不同的爆款风格，AI将自动适配创作策略"
         )
         

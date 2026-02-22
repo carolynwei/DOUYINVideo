@@ -145,12 +145,13 @@ def generate_viral_script(topic, api_key, auto_image_prompt=True):
 
 def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
     """
-    【🎯 智能路由器】根据风格动态构建 System Prompt + 强制自检
+    【🎬 VideoTaxi FSD 2.0 导演增强版】
+    根据风格动态构建 System Prompt + 强制自检 + 视觉锚点 + 情绪曲线 + SFX导演位
     支持5种爆款风格，共享通用爆款法则 + 风格化差异
     """
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1".strip())
     
-    # 1️⃣ 风格定义库（动态插件）- 升级版：添加影像美学插件
+    # 1️⃣ 风格定义库（动态插件）- VideoTaxi FSD 2.0 升级版
     STYLE_CONFIGS = {
         "🗡️ 认知刺客流（冲击力+优越感）": {
             "tone": "冲击、扎心、人间清醒。目标：摧毁旧认知，建立高阶真相。语言：短句、倒装、高频反问。",
@@ -197,8 +198,8 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
     # 获取当前风格配置
     style_config = STYLE_CONFIGS.get(style, STYLE_CONFIGS["🗡️ 认知刺客流（冲击力+优越感）"])
     
-    # 2️⃣ 构建万能主控提示词（融合方案一：自检环节）
-    master_system_prompt = f"""你是一位顶尖视频制片人，现在正在执行【{style}】风格的任务。
+    # 2️⃣ VideoTaxi FSD 2.0 导演增强版主控提示词
+    master_system_prompt = f"""你是一位顶尖视频制片人，正在执行【{style}】风格的任务。
 
 【核心风格约束】：
 {style_config['tone']}
@@ -214,6 +215,35 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
 - 镜头角度（Shot Type）：如 Medium shot, Close-up, POV 等
 - 光影（Lighting）：如 Cinematic lighting, Natural light, Deep shadows 等
 - 视觉参考：{style_config['shot_keywords']}
+
+【🎬 VideoTaxi FSD 2.0 导演指令集】：
+
+**1. 视觉一致性锚点 (Visual Anchor)**：
+在输出前，必须先定义一个 visual_anchor。所有分镜的 image_prompt 描述必须以该锚点开头，确保同一视频里的人物/主体保持一致。
+- 如果是人物类视频：visual_anchor = "同一亚洲年轻女性，黑色长发，穿白色衬衫"
+- 如果是产品类视频：visual_anchor = "同一款银色无线耳机，极简设计"
+- 如果是场景类视频：visual_anchor = "同一间现代简约办公室，落地窗"
+所有 image_prompt 必须以 visual_anchor 开头，然后再描述具体动作和场景。
+
+**2. 情绪动态曲线 (Emotion Arc)**：
+严禁全篇同一情绪！必须遵循 [Hook(冷) -> Content(深) -> Gold_Sentence(爆)] 的波段：
+- 第1个分镜(Hook)：情绪 = cold_question 或 sarcastic_mock（冷启动，制造悬念）
+- 第2-3个分镜(Content)：情绪 = deep_mystery 或 neutral_narrate（深入内容，建立认知）
+- 第4-5个分镜(Gold)：情绪 = angry_shout 或 excited_announce 或 fierce_warning（爆发高潮，情绪顶点）
+- 最后一个分镜(Outro)：情绪 = sad_sigh 或 neutral_narrate（余韵，引导互动）
+
+**3. SFX 导演位 (Sound Effects Placeholder)**：
+在 segments 中新增 sfx_label 字段，为后期音效预留位置：
+- [Transition]：转场音效，用于分镜切换
+- [Impact]：冲击音效，用于高潮/金句时刻
+- [Suspense]：悬疑音效，用于制造紧张感
+- [Glitch]：故障音效，用于科技/反转效果
+- [Silence]：静音占位，用于呼吸停顿
+分配策略：
+- Hook分镜：使用 [Suspense] 或 [Silence] 制造悬念
+- 转场分镜：使用 [Transition] 平滑切换
+- 高潮分镜：使用 [Impact] 强化冲击力
+- 反转分镜：使用 [Glitch] 制造意外感
 
 【通用爆款法则】：
 1. 黄金前3秒：直接切入冲突，禁止铺垫
@@ -255,21 +285,27 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
 6. **情绪检查**：确认narration中是否包含了至少1个<prosody>标签，Hook句必须有情绪标注
 
 【输出要求】：
-必须严格输出JSON数组，包含4-6个分镜。格式：
-[{{
-  "start_time": 0,  // 该分镜开始时间(秒)
-  "end_time": 3,    // 该分镜结束时间(秒)
-  "narration": "口播文案（经过自检的刺客文案）", 
-  "emotion_vibe": "cold_question",  // 情绪标签: cold_question/angry_shout/deep_mystery/excited_announce/fierce_warning/sad_sigh/sarcastic_mock/neutral_narrate
-  "image_prompt": "English prompt with {style_config['shot_keywords']}, cinematic lighting, detailed scene",
-  "sfx": "heartbeat_heavy.mp3"  // 音效文件名(可选)，选项: heartbeat_heavy/glass_shatter/whoosh/tension_riser/emotional_swell/silence
-}}]
+必须严格输出JSON对象，包含 visual_anchor 和 segments 数组。格式：
+{{
+  "visual_anchor": "根据主题自动定义的视觉锚点描述（中文，用于确保画面一致性）",
+  "segments": [
+    {{
+      "start_time": 0,  // 该分镜开始时间(秒)
+      "end_time": 3,    // 该分镜结束时间(秒)
+      "narration": "口播文案（经过自检的刺客文案）", 
+      "emotion_vibe": "cold_question",  // 严格遵循情绪曲线: cold_question/angry_shout/deep_mystery/excited_announce/fierce_warning/sad_sigh/sarcastic_mock/neutral_narrate
+      "image_prompt": "visual_anchor + 具体场景描述（英文，包含镜头、光影、风格）",
+      "sfx_label": "[Impact]"  // SFX导演位: [Transition]/[Impact]/[Suspense]/[Glitch]/[Silence]
+    }}
+  ]
+}}
 
 ⚡ **关键：导演时间轴逻辑**：
+- visual_anchor 必须在 segments 之前定义，所有 image_prompt 必须以此开头
 - start_time/end_time 必须连续且紧凑（如 0-3, 3-7, 7-11...）
 - 总时长应控制在30-60秒内
-- emotion_vibe 必须从8种情绪中选择，与 narration 的情绪匹配
-- sfx 应与分镜氛围匹配，高潮处加强，平静处可留空
+- emotion_vibe 必须遵循 [Hook(冷) -> Content(深) -> Gold(爆)] 曲线
+- sfx_label 应与分镜氛围匹配：Hook用[Suspense]，转场用[Transition]，高潮用[Impact]，反转用[Glitch]
 
 绝对不要输出Markdown标记（如 ```json）或其他解释性文字。"""
     
@@ -287,17 +323,27 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
         
         content = response.choices[0].message.content
         clean_content = re.sub(r'```json\n|\n```|```', '', content).strip()
-        scenes = json.loads(clean_content)
+        result = json.loads(clean_content)
         
-        # 解析返回的JSON结构
-        if isinstance(scenes, dict):
-            for v in scenes.values():
+        # 🎬 VideoTaxi FSD 2.0: 解析新的 JSON 结构
+        if isinstance(result, dict):
+            # 新格式：包含 visual_anchor 和 segments
+            if 'segments' in result and isinstance(result['segments'], list):
+                visual_anchor = result.get('visual_anchor', '')
+                segments = result['segments']
+                # 将 visual_anchor 注入到每个 segment 中供后续使用
+                for seg in segments:
+                    seg['_visual_anchor'] = visual_anchor
+                st.success(f"✅ {style} 剧本已通过 VideoTaxi FSD 2.0 导演审计！")
+                return segments
+            # 兼容旧格式：直接返回数组
+            for v in result.values():
                 if isinstance(v, list):
                     st.success(f"✅ {style} 剧本已通过自检审计！")
                     return v
         
         st.success(f"✅ {style} 剧本已通过自检审计！")
-        return scenes
+        return result if isinstance(result, list) else []
         
     except Exception as e:
         st.error(f"{style} 剧本生成失败: {e}")
