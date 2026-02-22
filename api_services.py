@@ -143,54 +143,225 @@ def generate_viral_script(topic, api_key, auto_image_prompt=True):
         st.error(f"爆款剧本生成失败: {e}")
         return []
 
+# 🎬 导演级 Prompt 模板库 - VideoTaxi Cinematography v3.0
+CINEMATIC_TEMPLATES = {
+    "镜头语言": {
+        "extreme_close_up": "Extreme close-up, shallow depth of field, bokeh background, intimate perspective",
+        "close_up": "Close-up portrait, sharp focus on subject, blurred background, emotional intensity",
+        "medium_shot": "Medium shot, waist-up framing, environmental context, natural posture",
+        "wide_shot": "Wide shot, full body in environment, establishing scene, cinematic composition",
+        "low_angle": "Low angle shot, looking up at subject, powerful and dominant perspective",
+        "high_angle": "High angle shot, looking down, vulnerable or contemplative mood",
+        "dutch_angle": "Dutch angle, tilted horizon, disorienting and tense atmosphere",
+        "over_shoulder": "Over-the-shoulder shot, perspective dialogue, depth layers",
+        "pov": "First-person POV, immersive perspective, hands in frame, subjective experience"
+    },
+    "光影效果": {
+        "cinematic": "Cinematic lighting, dramatic chiaroscuro, high contrast shadows",
+        "neon": "Neon lighting, cyberpunk atmosphere, red and blue color cast, night scene",
+        "natural": "Natural golden hour lighting, soft diffused sunlight, warm tones",
+        "moody": "Moody atmospheric lighting, fog and haze, desaturated palette",
+        "studio": "Professional studio lighting, three-point setup, clean and polished",
+        "practical": "Practical lighting sources, lamps and screens, realistic ambiance"
+    },
+    "风格滤镜": {
+        "sam_kolder": "Sam Kolder style, orange and teal color grading, smooth transitions, travel film aesthetic",
+        "brandon_li": "Brandon Li documentary style, handheld authenticity, human stories, natural moments",
+        "daniel_schiffer": "Daniel Schiffer commercial style, product focus, vibrant colors, macro details",
+        "blade_runner": "Blade Runner 2049 aesthetic, cyberpunk dystopia, neon-noir, Denis Villeneuve style",
+        "wong_kar_wai": "Wong Kar-wai style, slow shutter motion blur, saturated neon, romantic melancholy",
+        "roger_deakins": "Roger Deakins cinematography, masterful lighting, wide compositions, subtle color grading"
+    },
+    "质感增强": {
+        "film_grain": "35mm film grain, Kodak Vision3 texture, organic imperfections",
+        "anamorphic": "Anamorphic lens characteristics, oval bokeh, horizontal lens flares",
+        "sharp": "Ultra-sharp 8K resolution, crisp details, professional photography",
+        "dreamy": "Dreamy soft focus, ethereal glow, romantic atmosphere",
+        "gritty": "Gritty documentary texture, raw and unpolished, real-world authenticity"
+    }
+}
+
+
+def build_master_image_prompt(visual_anchor: str, scene_description: str, style_config: dict, shot_type: str = "close_up") -> str:
+    """
+    🎬 导演级 Prompt 构建器 - 确保电影级画面质感
+    
+    Args:
+        visual_anchor: 视觉锚点（主角特征包）
+        scene_description: 场景描述
+        style_config: 风格配置
+        shot_type: 镜头类型
+    
+    Returns:
+        完整的英文生图 Prompt
+    """
+    # 1. 视觉锚点（强制一致性）
+    anchor = visual_anchor if visual_anchor else "A consistent character"
+    
+    # 2. 镜头语言
+    shot = CINEMATIC_TEMPLATES["镜头语言"].get(shot_type, CINEMATIC_TEMPLATES["镜头语言"]["close_up"])
+    
+    # 3. 光影效果
+    lighting = CINEMATIC_TEMPLATES["光影效果"].get("cinematic")
+    if "cyberpunk" in style_config.get("visual_base", "").lower():
+        lighting = CINEMATIC_TEMPLATES["光影效果"]["neon"]
+    elif "natural" in style_config.get("visual_base", "").lower():
+        lighting = CINEMATIC_TEMPLATES["光影效果"]["natural"]
+    
+    # 4. 风格滤镜
+    style_filter = style_config.get("shot_keywords", CINEMATIC_TEMPLATES["风格滤镜"]["sam_kolder"])
+    
+    # 5. 质感增强
+    texture = CINEMATIC_TEMPLATES["质感增强"]["sharp"]
+    
+    # 组合完整 Prompt
+    prompt_parts = [
+        anchor,  # 视觉锚点确保一致性
+        scene_description,  # 具体场景
+        shot,  # 镜头语言
+        lighting,  # 光影效果
+        style_filter,  # 风格滤镜
+        texture,  # 质感增强
+        "8k resolution, highly detailed, professional photography, cinematic composition"  # 基础质量
+    ]
+    
+    return ", ".join(filter(None, prompt_parts))
+
+
+def generate_visual_anchor(topic: str, style: str, client) -> dict:
+    """
+    🎯 生成视觉锚点（主角特征包）- 确保全片人物一致性
+    
+    Returns:
+        {
+            "anchor_description": "主角特征描述",
+            "character_type": "人物/产品/场景",
+            "key_features": ["特征1", "特征2", "特征3"]
+        }
+    """
+    anchor_prompt = f"""基于主题"{topic}"和风格"{style}"，定义一个视觉锚点（Visual Anchor）。
+
+视觉锚点是确保全片画面一致性的关键：所有分镜中的人物/主体必须保持相同特征。
+
+请输出JSON格式：
+{{
+  "anchor_description": "详细的主角特征描述（中文，50字以内）",
+  "character_type": "person/product/scene",
+  "key_features": ["特征1", "特征2", "特征3"],
+  "english_description": "英文描述，用于image_prompt开头"
+}}
+
+示例（35岁程序员主题）：
+{{
+  "anchor_description": "穿黑色皮衣的35岁亚洲男性，深邃眼眸，下巴有胡茬，略带疲惫但坚定的神情",
+  "character_type": "person",
+  "key_features": ["黑色皮衣", "深邃眼眸", "下巴胡茬"],
+  "english_description": "A 35-year-old Asian man wearing a black leather jacket, deep-set eyes, stubbled chin, tired yet determined expression"
+}}"""
+    
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": anchor_prompt}],
+            temperature=0.7,
+            response_format={'type': 'json_object'}
+        )
+        content = response.choices[0].message.content
+        clean_content = re.sub(r'```json\n|\n```|```', '', content).strip()
+        return json.loads(clean_content)
+    except Exception as e:
+        # 返回默认锚点
+        return {
+            "anchor_description": "亚洲年轻主角，现代都市风格",
+            "character_type": "person",
+            "key_features": ["亚洲面孔", "现代服装"],
+            "english_description": "A young Asian protagonist, modern urban style"
+        }
+
+
 def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
     """
-    【🎬 VideoTaxi FSD 2.0 导演增强版】
-    根据风格动态构建 System Prompt + 强制自检 + 视觉锚点 + 情绪曲线 + SFX导演位
-    支持5种爆款风格，共享通用爆款法则 + 风格化差异
+    【🎬 VideoTaxi Cinematography v3.0 导演定焦版】
+    
+    核心升级：
+    1. 视觉锚点系统：先生成主角特征包，确保全片人物一致性
+    2. 导演级Prompt模板：强制包含镜头语言、光影、风格滤镜
+    3. 电影质感增强：8K、胶片颗粒、专业摄影术语
     """
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1".strip())
     
-    # 1️⃣ 风格定义库（动态插件）- VideoTaxi FSD 2.0 升级版
+    # 🎯 步骤1：生成视觉锚点（主角特征包）
+    with st.status("🎬 导演正在确定视觉锚点...", expanded=True) as status:
+        visual_anchor_data = generate_visual_anchor(topic, style, client)
+        visual_anchor = visual_anchor_data.get("english_description", "")
+        status.update(label=f"✅ 视觉锚点锁定: {visual_anchor_data.get('anchor_description', '')}", state="complete")
+        st.json(visual_anchor_data)
+    
+    # 1️⃣ 风格定义库（增强版）- VideoTaxi Cinematography v3.0
     STYLE_CONFIGS = {
         "🗡️ 认知刺客流（冲击力+优越感）": {
             "tone": "冲击、扎心、人间清醒。目标：摧毁旧认知，建立高阶真相。语言：短句、倒装、高频反问。",
-            "hook": "前3秒必须是反常识金句，直接否定普遍认知（“你以为…其实…”逻辑）",
-            "visual_base": "Sam Kolder 风格，高对比度，冷色调，极简主体，锐利线条",
-            "visual_rules": "视觉：高冷电影感。镜头：多用中远景切换特写，稳定器运镜。色调：深邃冷色调，强调光影明暗对比。参考：Sean Tucker 街头人文感 + Blade Runner 2049 视觉风格。",
-            "shot_keywords": "Cinematic, Deep shadows, Chiaroscuro lighting, Cold color grading, Minimalist composition, Sharp lines, Medium shot to extreme close-up transition",
+            "hook": "前3秒必须是反常识金句，直接否定普遍认知（你以为...其实...逻辑）",
+            "visual_base": "Sam Kolder + Roger Deakins 风格，高对比度，冷色调，电影级光影",
+            "visual_rules": """视觉：高冷电影感，专业 cinematography。
+镜头：多用 Medium shot 到 Extreme close-up 的切换，稳定器运镜，Dutch angle 制造张力。
+光影：Cinematic lighting, dramatic chiaroscuro, deep shadows, cold color grading。
+色调：深邃冷色调，强调光影明暗对比，orange and teal 色彩分级。
+参考：Sean Tucker 街头人文感 + Blade Runner 2049 视觉风格 + Sam Kolder 转场美学。""",
+            "shot_keywords": CINEMATIC_TEMPLATES["风格滤镜"]["sam_kolder"] + ", " + CINEMATIC_TEMPLATES["风格滤镜"]["roger_deakins"],
+            "default_shot": "close_up",
             "bgm_style": "深沉鼓点，低频Bass，紧迫感氛围音乐（参考：Hans Zimmer 风格）"
         },
         "👍 听勝/养成系（互动率04+评论爆炸）": {
             "tone": "真诚、低姿态、蜕变感。目标：激发好为人师欲。语言：口语化、求助式、带评论区互动点。",
-            "hook": "以“求助”或“反差展示”开场（“上次你们说我XX，我改了…”）",
-            "visual_base": "生活化场景，手机第一人称拍摄，生动表情，真实感强",
-            "visual_rules": "视觉：生活化、Vlog感。镜头：手持摇晃，画面粗糙但真实，适当焦外。色调：自然光，略带杂乱的生活背景。参考：Brandon Li 纪实风格 + Casey Neistat Vlog 美学。",
-            "shot_keywords": "Handheld camera, Vlog aesthetic, Natural lighting, Shallow depth of field, Casual background, Authentic expressions, Slightly shaky footage",
+            "hook": "以求助或反差展示开场（上次你们说我XX，我改了...）",
+            "visual_base": "Brandon Li 纪实风格，生活化场景，手机第一人称拍摄",
+            "visual_rules": """视觉：生活化、Vlog感，authentic documentary style。
+镜头：Handheld camera, slightly shaky footage, shallow depth of field, over-the-shoulder shots。
+光影：Natural lighting, golden hour warmth, practical light sources。
+色调：自然光，略带杂乱的生活背景，温暖真实。
+参考：Brandon Li 纪实风格 + Casey Neistat Vlog 美学。""",
+            "shot_keywords": CINEMATIC_TEMPLATES["风格滤镜"]["brandon_li"],
+            "default_shot": "medium_shot",
             "bgm_style": "温暖原声吉他，轻快钢琴，治愈系背景Lofi（参考：Indie Folk 风格）"
         },
         "🎬 POV沉浸流（第一人称+代入感）": {
-            "tone": "压迫感、代入感、共情。目标：打破屏幕隔阙。语言：大量使用‘你’，强调感官细节。",
-            "hook": "用“如果你是…”或“想象一下你正在…”直接把观众拉入场景",
-            "visual_base": "Brandon Li 风格，第一人称视角，近距离特写，焦虑感或压迫感氛围",
-            "visual_rules": "视觉：第一人称视角。镜头：超广角，模拟人眼，画面边缘有轻微畸变和动态模糊。参考：POV 极限运动运镜 + FPS 游戏视角。",
-            "shot_keywords": "First-person POV, Ultra-wide angle, Motion blur, Edge distortion, Immersive perspective, Claustrophobic framing, Dynamic movement",
+            "tone": "压迫感、代入感、共情。目标：打破屏幕隔阙。语言：大量使用'你'，强调感官细节。",
+            "hook": "用如果你是...或想象一下你正在...直接把观众拉入场景",
+            "visual_base": "POV 极限运动 + FPS 游戏视角，超广角，沉浸式",
+            "visual_rules": """视觉：First-person POV，immersive perspective，subjective camera。
+镜头：Ultra-wide angle lens, motion blur, edge distortion, POV hands in frame。
+光影：Moody atmospheric lighting, practical sources, realistic ambiance。
+色调：焦虑感或压迫感氛围，slightly desaturated。
+参考：POV 极限运动运镜 + FPS 游戏视角 + 第一人称电影。""",
+            "shot_keywords": "First-person POV, Ultra-wide angle, Motion blur, Immersive perspective, Subjective camera, POV hands",
+            "default_shot": "pov",
             "bgm_style": "紧张悬疑音效，心跳声，呼吸声，环境音增强沉浸感（参考：Horror Game OST）"
         },
         "🔥 情绪宣泄流（极致反转+发疯文学）": {
             "tone": "极端、爽感、发疯文学。目标：提供情绪出口。语言：情绪波动剧烈，使用夸张动词。",
-            "hook": "用极端情绪词开场（“我真的忠了！”“给我笑死了！”），不讲道理只讲情",
-            "visual_base": "Daniel Schiffer 风格，夹杂快闪切换，夏张表情，高饱和度色彩",
-            "visual_rules": "视觉：极具张力和压迫感。镜头：极近特写（眼睛/嘴巴），快速推拉镜头，摇晃镜头增强混乱感。色调：高饱和度，红黑撞色。参考：电影级的特写剪辑 + Edgar Wright 快速剪辑风格。",
-            "shot_keywords": "Extreme close-up, Shaky cam, Rapid zoom, High saturation, Red and black color palette, Intense facial expressions, Quick cuts",
+            "hook": "用极端情绪词开场（我真的忠了！给我笑死了！），不讲道理只讲情",
+            "visual_base": "Daniel Schiffer + Edgar Wright 风格，快闪切换，高饱和度",
+            "visual_rules": """视觉：极具张力和压迫感，high energy commercial style。
+镜头：Extreme close-up (eyes/mouth), rapid zoom, shaky cam, quick cuts, Dutch angles。
+光影：High contrast, dramatic shadows, saturated colors, red and black palette。
+色调：高饱和度，红黑撞色，情绪化的色彩。
+参考：电影级的特写剪辑 + Edgar Wright 快速剪辑 + Daniel Schiffer 商业风格。""",
+            "shot_keywords": CINEMATIC_TEMPLATES["风格滤镜"]["daniel_schiffer"],
+            "default_shot": "extreme_close_up",
             "bgm_style": "崩坏电子乐，混沌鼓点，尖叫声效，极具爆发力（参考：Trap/Dubstep 风格）"
         },
         "🐱 Meme抗象流（低成本+病毒传播）": {
             "tone": "幽默、病毒、解压。目标：极低门槛传播。语言：洗脑棗、配合简单视觉节奏。",
             "hook": "用网络棗或流行Emoji开场，降低接收门槛",
-            "visual_base": "简单Meme图配文，猫狗表情包，低成本动画风，洗脑BGM",
-            "visual_rules": "视觉：扁平化、高饱和。镜头：固定机位，主体居中，简单清晰。色调：明亮通透，多巴胺配色。参考：表情包美学 + TikTok 简易动画。",
-            "shot_keywords": "Flat design, High saturation, Pop colors, Centered composition, Simple background, Meme template style, Clean and bright",
+            "visual_base": "TikTok  viral style，扁平化，高饱和，表情包美学",
+            "visual_rules": """视觉：Flat design, pop colors, centered composition, clean and bright。
+镜头：Static camera, centered subject, simple background, eye-level framing。
+光影：Bright even lighting, minimal shadows, vibrant saturation。
+色调：明亮通透，多巴胺配色，高饱和。
+参考：表情包美学 + TikTok  viral style + 简易动画。""",
+            "shot_keywords": "Flat design, Pop colors, Centered composition, Viral meme style, Bright lighting, High saturation",
+            "default_shot": "medium_shot",
             "bgm_style": "洗脑神曲，魔性循环，高频电音，搭配特效音（参考：Vine/TikTok Viral Sounds）"
         }
     }
@@ -349,14 +520,30 @@ def generate_script_by_style(topic, style, api_key, auto_image_prompt=True):
         st.error(f"{style} 剧本生成失败: {e}")
         return []
 
-def generate_images_zhipu(scenes_data, api_key):
-    """调用智谱 CogView-3-Plus - 优化版：增强图片质量"""
+def generate_images_zhipu(scenes_data, api_key, style_config=None):
+    """
+    🎬 调用智谱 CogView-3-Plus - VideoTaxi Cinematography v3.0 导演定焦版
+    
+    核心升级：
+    1. 使用 build_master_image_prompt 构建电影级 Prompt
+    2. 视觉锚点确保人物一致性
+    3. 强制镜头语言、光影、风格滤镜
+    """
     url = "https://open.bigmodel.cn/api/paas/v4/images/generations".strip()
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
     image_paths = []
     
-    # 画质增强后缀（添加到每个提示词）
-    quality_enhancement = ", ultra high quality, 8k uhd, professional photography, sharp focus, highly detailed, cinematic lighting, best quality, masterpiece"
+    # 获取视觉锚点（从第一个 scene 中获取）
+    visual_anchor = ""
+    if scenes_data and len(scenes_data) > 0:
+        visual_anchor = scenes_data[0].get('_visual_anchor', '')
+    
+    # 默认风格配置
+    default_style = {
+        "shot_keywords": CINEMATIC_TEMPLATES["风格滤镜"]["sam_kolder"],
+        "default_shot": "close_up"
+    }
+    style = style_config or default_style
     
     for i, scene in enumerate(scenes_data):
         # 🔍 检查 image_prompt 是否为空
@@ -366,11 +553,26 @@ def generate_images_zhipu(scenes_data, api_key):
             image_paths.append(None)
             continue
         
-        # 🎨 优化提示词：添加质量增强后缀
-        enhanced_prompt = raw_prompt.strip()
-        # 如果提示词已经有质量词，避免重复
-        if not any(q in enhanced_prompt.lower() for q in ['8k', 'masterpiece', 'best quality']):
-            enhanced_prompt += quality_enhancement
+        # 🎬 使用导演级 Prompt 构建器
+        # 提取场景描述（去掉可能的 visual_anchor 前缀）
+        scene_desc = raw_prompt
+        if visual_anchor and raw_prompt.startswith(visual_anchor):
+            scene_desc = raw_prompt[len(visual_anchor):].strip(", ")
+        
+        # 根据分镜位置选择镜头类型
+        shot_type = style.get('default_shot', 'close_up')
+        if i == 0:
+            shot_type = 'extreme_close_up'  # Hook 用特写
+        elif i == len(scenes_data) - 1:
+            shot_type = 'wide_shot'  # 结尾用远景
+        
+        # 构建大师级 Prompt
+        enhanced_prompt = build_master_image_prompt(
+            visual_anchor=visual_anchor,
+            scene_description=scene_desc,
+            style_config=style,
+            shot_type=shot_type
+        )
             
         # 确保提示词长度合适（智谱有长度限制）
         if len(enhanced_prompt) > 500:
