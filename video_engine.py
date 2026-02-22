@@ -3,6 +3,10 @@ import platform
 import asyncio
 import edge_tts
 import numpy as np
+import requests
+import json
+import base64
+import uuid
 from PIL import Image, ImageDraw, ImageFont
 import streamlit as st
 from moviepy.editor import AudioFileClip, ImageClip, ColorClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip
@@ -103,12 +107,101 @@ def create_subtitle_image(text, width=1080, height=400, fontsize=70):
     # 转为 numpy 数组供 MoviePy 使用
     return np.array(img)
 
-async def text_to_mp3(text, filename):
-    """【云端优化版】直接联网生成配音，增加重试逻辑"""
+def call_volcengine_tts(text, voice_id, output_path):
+    """
+    调用火山引擎 TTS API 生成音频
+    """
+    try:
+        # 1. 安全获取鉴权信息
+        appid = st.secrets.get("VOLC_APPID", "")
+        access_token = st.secrets.get("VOLC_ACCESS_TOKEN", "")
+        
+        if not appid or not access_token:
+            # 如果没有配置火山引擎，回退到 Edge TTS
+            return False
+        
+        cluster = "volcano_tts"  # 官方默认的 TTS 集群名称
+        
+        # 火山引擎 TTS API 的请求地址
+        url = "https://openspeech.bytedance.com/api/v1/tts"
+        
+        # 2. 构造请求头
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        # 3. 构造请求体
+        payload = {
+            "app": {
+                "appid": appid,
+                "token": access_token,
+                "cluster": cluster
+            },
+            "user": {
+                "uid": "video_generator_user"
+            },
+            "audio": {
+                "voice_type": voice_id,
+                "encoding": "mp3",
+                "speed_ratio": 1.1,     # 语速略快一点，更符合短视频节奏
+                "volume_ratio": 1.2,    # 音量提升一点
+                "pitch_ratio": 1.0
+            },
+            "request": {
+                "reqid": str(uuid.uuid4()),
+                "text": text,
+                "text_type": "plain",
+                "operation": "query"
+            }
+        }
+        
+        # 4. 发送 POST 请求
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        
+        # 5. 处理响应结果
+        if response.status_code == 200:
+            resp_json = response.json()
+            if resp_json.get("code") == 3000:  # 3000 是火山引擎 API 成功的状态码
+                # 提取 base64 编码的音频数据并解码
+                audio_data = base64.b64decode(resp_json["data"])
+                
+                # 将二进制音频写入文件
+                with open(output_path, "wb") as f:
+                    f.write(audio_data)
+                return True
+            else:
+                error_msg = resp_json.get('message', '未知错误')
+                print(f"❌ 火山引擎 TTS 业务报错: {error_msg}")
+                return False
+        else:
+            print(f"❌ 网络请求失败，HTTP 状态码: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ 火山引擎 TTS 调用异常: {e}")
+        return False
+
+async def text_to_mp3(text, filename, voice_id="zh-CN-YunxiNeural"):
+    """【云端优化版】直接联网生成配音，增加重试逻辑。支持多路 TTS 路由。"""
+    
+    # 🎙️ 路由 1：火山引擎 TTS (方言 + 高情绪表达)
+    if voice_id.startswith("volc_"):
+        # 去掉前缀，获取真实的音色 ID
+        real_voice_id = voice_id.replace("volc_", "")
+        success = call_volcengine_tts(text, real_voice_id, filename)
+        if success:
+            return True
+        else:
+            # 火山引擎失败，回退到 Edge TTS
+            print("⚠️ 火山引擎不可用，回退到 Edge TTS 模式")
+            voice_id = "zh-CN-YunxiNeural"  # 使用默认男声
+    
+    # 🎙️ 路由 2：Edge TTS (免费兜底)
     for attempt in range(3):
         try:
             # 删除了 proxy 参数，云端直连速度极快
-            communicate = edge_tts.Communicate(text, "zh-CN-YunxiNeural", rate="+10%")
+            communicate = edge_tts.Communicate(text, voice_id, rate="+10%")
             await communicate.save(filename)
             return True
         except Exception as e:
@@ -116,13 +209,13 @@ async def text_to_mp3(text, filename):
             await asyncio.sleep(2)
     return False
 
-def generate_all_audios_sync(scenes_data):
+def generate_all_audios_sync(scenes_data, voice_id="zh-CN-YunxiNeural"):
     """串行生成所有分镜配音"""
     audio_files = []
     for i, scene in enumerate(scenes_data):
         audio_file = f"temp_audio_{i}.mp3"
         st.toast(f"🎙️ AI 配音生成中... {i+1}/{len(scenes_data)}")
-        if asyncio.run(text_to_mp3(scene['narration'], audio_file)):
+        if asyncio.run(text_to_mp3(scene['narration'], audio_file, voice_id)):
             audio_files.append(audio_file)
         else:
             # 失败兜底逻辑
@@ -130,13 +223,13 @@ def generate_all_audios_sync(scenes_data):
         asyncio.run(asyncio.sleep(0.5))
     return audio_files
 
-def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=None):
+def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=None, voice_id="zh-CN-YunxiNeural"):
     """核心视频渲染管线"""
     from api_services import generate_images_zhipu
     
     # 1. 资源生成
     image_paths = generate_images_zhipu(scenes_data, zhipu_key)
-    audio_files = generate_all_audios_sync(scenes_data)
+    audio_files = generate_all_audios_sync(scenes_data, voice_id)  # 传递 voice_id
     
     # 🔍 调试信息：显示成功生成的图片数量
     success_count = sum(1 for p in image_paths if p)

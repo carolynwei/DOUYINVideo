@@ -53,6 +53,36 @@ with st.sidebar:
         st.stop()  # 如果没有密钥，停止后续运行
 
     st.info("💡 你的个人 API 密钥已通过 Streamlit Cloud 加密保护。")
+    
+    # 🎙️ 声音与情绪选择
+    st.header("🎙️ 配音音色选择")
+    
+    # 将前端展示标签映射到后端具体的 Voice ID
+    VOICE_MAPPING = {
+        # Edge TTS (保留作为免费兜底)
+        "标准男声 (免费/Edge)": "zh-CN-YunxiNeural",
+        "标准女声 (免费/Edge)": "zh-CN-XiaoxiaoNeural",
+        "温柔女声 (免费/Edge)": "zh-CN-XiaoyiNeural",
+        
+        # 火山引擎 (方言与情绪担当)
+        "👑 纯正武汉话男 (火山)": "volc_BV051_streaming",
+        "🔥 暴躁嘶吼男 (火山)": "volc_BV001_streaming",
+        "💧 委屈哭腔女 (火山)": "volc_BV007_streaming",
+        "😊 开心活泼女 (火山)": "volc_BV002_streaming",
+    }
+    
+    # 下拉框选择
+    selected_voice_label = st.selectbox(
+        "请选择配音音色与方言：", 
+        list(VOICE_MAPPING.keys()),
+        help="火山引擎音色支持方言和情绪表达，Edge TTS 免费但表现力有限"
+    )
+    
+    # 获取对应的真实 ID 以便传递给引擎
+    selected_voice_id = VOICE_MAPPING[selected_voice_label]
+    
+    # 存储到 session_state 供后续使用
+    st.session_state.voice_id = selected_voice_id
 
 col1, col2 = st.columns([1, 1.2])
 
@@ -141,19 +171,32 @@ with col2:
                             st.rerun() 
                             
         with col_render:
-            if st.button("🚀 确认剧本，生成大片！", type="primary", use_container_width=True, help="渲染过程约需 2-3 分钟"):
+            if st.button("🚀 确认剧本，生成大片！", type="primary", use_container_width=True, help="渲染过程约需2-3 分钟"):
                 if not zhipu_api_key: st.error("请配置智谱 Key！")
                 else:
                     # 使用 st.status 展示实时进度
                     with st.status("🚀 视频引擎全力运转中...", expanded=True) as status:
                         st.write("🎨 智谱 AI 正在绘制高清分镜...")
-                        st.write("🎙️ 微软神经网络正在合成配音...")
+                                
+                        # 动态展示配音提示
+                        selected_label = [k for k, v in VOICE_MAPPING.items() if v == st.session_state.voice_id][0]
+                        if st.session_state.voice_id.startswith("volc_"):
+                            st.write(f"🔥 火山引擎正在生成高表现力配音：{selected_label}")
+                        else:
+                            st.write(f"🎙️ Edge TTS 正在合成配音：{selected_label}")
+                                
                         st.write("🎬 MoviePy 正在进行像素压制...")
-                        
+                                
                         video_file = "ai_b_roll_output.mp4"
-                        # 注意这里传入的是 edited_scenes，确保渲染的是表格里最新的内容
-                        success = render_ai_video_pipeline(edited_scenes, zhipu_api_key, video_file, pexels_api_key)
-                        
+                        # 传递 voice_id 参数
+                        success = render_ai_video_pipeline(
+                            edited_scenes, 
+                            zhipu_api_key, 
+                            video_file, 
+                            pexels_api_key,
+                            voice_id=st.session_state.voice_id  # 关键：传递音色 ID
+                        )
+                                
                         if success:
                             status.update(label="🎉 视频生成成功！", state="complete", expanded=False)
                             st.balloons()
