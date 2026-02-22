@@ -59,16 +59,16 @@ with st.sidebar:
     
     # 将前端展示标签映射到后端具体的 Voice ID
     VOICE_MAPPING = {
-        # Edge TTS (保留作为免费兜底)
+        # Edge TTS (免费兜底)
         "标准男声 (免费/Edge)": "zh-CN-YunxiNeural",
         "标准女声 (免费/Edge)": "zh-CN-XiaoxiaoNeural",
         "温柔女声 (免费/Edge)": "zh-CN-XiaoyiNeural",
         
-        # 火山引擎 (方言与情绪担当)
-        "👑 纯正武汉话男 (火山)": "volc_BV051_streaming",
-        "🔥 暴躁嘶吼男 (火山)": "volc_BV001_streaming",
-        "💧 委屈哭腔女 (火山)": "volc_BV007_streaming",
-        "😊 开心活泼女 (火山)": "volc_BV002_streaming",
+        # 火山引擎 (高阶情绪与特色音色 - 真实 ID)
+        # 注意：volc_ 前缀用于后端路由识别，会自动脱去传递给火山 API
+        "🍵 京腔侃爷 (火山)": "volc_zh_male_jingqiangkanye_moon_bigtts",
+        "✨ 俊朗男友 (火山)": "volc_zh_male_junlangnanyou_emo_v2_mars_bigtts",
+        "🎀 甜心小妹 (火山)": "volc_zh_female_tianxinxiaomei_emo_v2_mars_bigtts",
     }
     
     # 下拉框选择
