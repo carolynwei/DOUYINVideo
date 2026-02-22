@@ -14,6 +14,7 @@ import os
 import json
 import time
 import sqlite3
+import threading
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
@@ -27,6 +28,10 @@ try:
 except ImportError:
     HAS_SCHEDULE = False
     schedule = None
+
+# 全局调度器实例和线程
+_scheduler_instance = None
+_scheduler_thread = None
 
 
 @dataclass
@@ -564,3 +569,102 @@ if __name__ == "__main__":
             tower.run_scheduler()
         except KeyboardInterrupt:
             tower.stop_scheduler()
+
+
+# 🚀 Streamlit Cloud 后台调度启动器
+def start_background_scheduler(tianapi_key: str, deepseek_key: str, zhipu_key: str, 
+                               pexels_key: str = "", run_time: str = "04:00", 
+                               num_videos: int = 1):
+    """
+    在后台线程中启动调度器（适用于 Streamlit Cloud）
+    
+    Args:
+        tianapi_key: 天行数据 API Key
+        deepseek_key: DeepSeek API Key
+        zhipu_key: 智谱 API Key
+        pexels_key: Pexels API Key (可选)
+        run_time: 每日运行时间 (HH:MM)
+        num_videos: 每次生成视频数量
+    
+    Returns:
+        bool: 是否成功启动
+    """
+    global _scheduler_instance, _scheduler_thread
+    
+    if not HAS_SCHEDULE:
+        st.warning("⚠️ schedule 模块未安装，无法启动后台调度")
+        return False
+    
+    # 如果已经启动，不再重复
+    if _scheduler_thread is not None and _scheduler_thread.is_alive():
+        st.info("🚀 后台调度引擎已在运行中")
+        return True
+    
+    try:
+        # 创建调度塔台实例
+        _scheduler_instance = SchedulerTower(
+            tianapi_key=tianapi_key,
+            deepseek_key=deepseek_key,
+            zhipu_key=zhipu_key,
+            pexels_key=pexels_key
+        )
+        
+        # 设置定时任务
+        _scheduler_instance.schedule_daily_run(run_time=run_time, num_videos=num_videos)
+        
+        # 启动后台线程
+        def _run_scheduler_loop():
+            """后台线程运行的循环"""
+            _scheduler_instance.is_running = True
+            while _scheduler_instance.is_running:
+                schedule.run_pending()
+                time.sleep(60)  # 每分钟检查一次
+        
+        _scheduler_thread = threading.Thread(target=_run_scheduler_loop, daemon=True)
+        _scheduler_thread.start()
+        
+        st.success(f"🚀 VideoTaxi 后台调度引擎已激活！每日 {run_time} 自动发车")
+        return True
+        
+    except Exception as e:
+        st.error(f"❌ 启动后台调度失败: {e}")
+        return False
+
+
+def get_scheduler_status():
+    """获取调度器状态（用于 UI 显示）"""
+    global _scheduler_instance, _scheduler_thread
+    
+    is_running = (_scheduler_thread is not None and 
+                  _scheduler_thread.is_alive() and
+                  _scheduler_instance is not None and
+                  _scheduler_instance.is_running)
+    
+    next_run = None
+    if HAS_SCHEDULE and schedule:
+        try:
+            next_job = schedule.next_run()
+            if next_job:
+                next_run = next_job.strftime('%Y-%m-%d %H:%M:%S')
+        except:
+            pass
+    
+    return {
+        'is_running': is_running,
+        'next_run': next_run,
+        'daily_stats': _scheduler_instance.daily_stats if _scheduler_instance else {'generated_today': 0, 'last_run': None}
+    }
+
+
+def stop_background_scheduler():
+    """停止后台调度器"""
+    global _scheduler_instance, _scheduler_thread
+    
+    if _scheduler_instance:
+        _scheduler_instance.stop_scheduler()
+    
+    if _scheduler_thread and _scheduler_thread.is_alive():
+        # 由于线程是 daemon，主程序退出时会自动结束
+        st.info("🛑 后台调度器已停止")
+    
+    return True
