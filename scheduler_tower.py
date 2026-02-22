@@ -13,13 +13,20 @@ VideoTaxi 调度塔台 (Scheduler Tower)
 import os
 import json
 import time
-import schedule
 import sqlite3
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from pathlib import Path
 import streamlit as st
+
+# schedule 模块为可选（本地定时调度用）
+try:
+    import schedule
+    HAS_SCHEDULE = True
+except ImportError:
+    HAS_SCHEDULE = False
+    schedule = None
 
 
 @dataclass
@@ -474,11 +481,18 @@ class SchedulerTower:
             run_time: 运行时间，格式 "HH:MM"
             num_videos: 每次生成视频数量
         """
+        if not HAS_SCHEDULE:
+            print("⚠️ schedule 模块未安装，无法设置定时任务")
+            return
         schedule.every().day.at(run_time).do(self.auto_drive_mission, num_videos)
         print(f"⏰ 已设置每日 {run_time} 自动运行，每次生成 {num_videos} 个视频")
     
     def run_scheduler(self):
         """启动调度器（阻塞式）"""
+        if not HAS_SCHEDULE:
+            print("⚠️ schedule 模块未安装，无法启动定时调度")
+            return
+            
         print("🚀 VideoTaxi 调度塔台已启动")
         print("📡 等待定时任务...")
         
@@ -497,11 +511,18 @@ class SchedulerTower:
         """获取仪表盘数据（供UI使用）"""
         strategy_report = self.data_navigator.get_strategy_report()
         
+        next_run = None
+        if HAS_SCHEDULE and schedule:
+            try:
+                next_run = schedule.next_run().strftime('%Y-%m-%d %H:%M:%S') if schedule.next_run() else None
+            except:
+                pass
+        
         return {
             'daily_stats': self.daily_stats,
             'strategy_report': strategy_report,
             'is_running': self.is_running,
-            'next_run': schedule.next_run().strftime('%Y-%m-%d %H:%M:%S') if schedule.next_run() else None
+            'next_run': next_run
         }
 
 
