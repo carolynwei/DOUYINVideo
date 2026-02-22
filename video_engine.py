@@ -9,9 +9,10 @@ import base64
 import uuid
 import subprocess
 import sys
+import random
 from PIL import Image, ImageDraw, ImageFont
 import streamlit as st
-from moviepy.editor import AudioFileClip, ImageClip, ColorClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip
+from moviepy.editor import AudioFileClip, ImageClip, ColorClip, CompositeVideoClip, concatenate_videoclips, CompositeAudioClip, afx
 
 # 🔑 字体路径配置：多级降级策略确保100%可用
 def get_font_path():
@@ -50,6 +51,79 @@ try:
                 st.error("❌ 未找到字体文件！请上传 font.ttf")
 except:
     pass  # 非 Streamlit 环境下忽略
+
+# 🎵 BGM 风格路由系统
+def get_bgm_by_style(style_name, video_duration):
+    """
+    根据风格随机抽取一首 BGM，并根据视频时长自动循环和调整音量
+    
+    Args:
+        style_name: 风格名称（如 "🗡️ 认知刺客流（冲击力+优越感）"）
+        video_duration: 视频总时长（秒）
+    
+    Returns:
+        AudioFileClip: 处理后的 BGM 音频剗辑，已调整音量和时长
+    """
+    # 风格与文件夹的映射
+    style_folder_map = {
+        "🗡️ 认知刺客流（冲击力+优越感）": "assassin",
+        "👍 听勝/养成系（互动率04+评论爆炸）": "growth",
+        "🎬 POV沉浸流（第一人称+代入感）": "pov",
+        "🔥 情绪宣泄流（极致反转+发疯文学）": "venting",
+        "🐱 Meme抗象流（低成本+病毒传播）": "meme"
+    }
+    
+    folder_name = style_folder_map.get(style_name, "assassin")
+    bgm_dir = os.path.join("assets", "bgm", folder_name)
+    
+    # 从目录下随机选一首歌
+    if os.path.exists(bgm_dir):
+        bgm_files = [f for f in os.listdir(bgm_dir) if f.endswith(('.mp3', '.wav'))]
+        if bgm_files:
+            selected_bgm = random.choice(bgm_files)
+            bgm_path = os.path.join(bgm_dir, selected_bgm)
+            st.info(f"🎵 使用 {style_name} 风格 BGM: {selected_bgm}")
+        else:
+            # 如果目录为空，使用默认 BGM
+            bgm_path = "bgm.mp3"
+            st.warning(f"⚠️ {folder_name} 目录为空，使用默认 BGM")
+    else:
+        # 目录不存在，使用默认 BGM
+        bgm_path = "bgm.mp3"
+        st.warning(f"⚠️ {bgm_dir} 不存在，使用默认 BGM")
+    
+    # 检查默认 BGM 是否存在
+    if not os.path.exists(bgm_path):
+        st.error("❌ 未找到 BGM 文件！请上传 bgm.mp3 或在 assets/bgm 目录下添加风格 BGM")
+        return None
+    
+    try:
+        # 加载音频
+        bgm_clip = AudioFileClip(bgm_path)
+        
+        # 核心处理 1：如果 BGM 短于视频，则循环播放
+        if bgm_clip.duration < video_duration:
+            # 使用 afx.audio_loop 循环播放
+            bgm_clip = afx.audio_loop(bgm_clip, duration=video_duration)
+        else:
+            # 截取所需长度
+            bgm_clip = bgm_clip.subclip(0, video_duration)
+            
+        # 核心处理 2：设置 BGM 音量（通常设为 0.08 - 0.25，避免盖过人声）
+        volume_map = {
+            "🗡️ 认知刺客流（冲击力+优越感）": 0.15,
+            "👍 听勝/养成系（互动率04+评论爆炸）": 0.08,
+            "🎬 POV沉浸流（第一人称+代入感）": 0.12,
+            "🔥 情绪宣泄流（极致反转+发疯文学）": 0.25,
+            "🐱 Meme抗象流（低成本+病毒传播）": 0.20
+        }
+        
+        volume = volume_map.get(style_name, 0.1)
+        return bgm_clip.volumex(volume)
+        
+    except Exception as e:
+        st.error(f"❌ BGM 加载失败: {e}")
+        return None
 
 def create_subtitle_image(text, width=1080, height=400, fontsize=70):
     """🎨 用 Pillow 手工绘制字幕图片（彻底绕过 ImageMagick）"""
@@ -213,8 +287,17 @@ def generate_all_audios_sync(scenes_data, voice_id="zh-CN-YunxiNeural"):
         asyncio.run(asyncio.sleep(0.5))
     return audio_files
 
-def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=None, voice_id="zh-CN-YunxiNeural"):
-    """核心视频渲染管线"""
+def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=None, voice_id="zh-CN-YunxiNeural", style_name=None):
+    """核心视频渲染管线
+    
+    Args:
+        scenes_data: 分镜数据列表
+        zhipu_key: 智谱 API Key
+        output_path: 输出视频路径
+        pexels_key: Pexels API Key
+        voice_id: 声音 ID
+        style_name: 风格名称（用于匹配 BGM）
+    """
     from api_services import generate_images_zhipu
     
     # 1. 资源生成
@@ -295,9 +378,24 @@ def render_ai_video_pipeline(scenes_data, zhipu_key, output_path, pexels_key=Non
     
     final = concatenate_videoclips(scene_clips, method="compose")
     
-    if os.path.exists("bgm.mp3"):
-        bgm = AudioFileClip("bgm.mp3").volumex(0.08).set_duration(final.duration)
-        final = final.set_audio(CompositeAudioClip([final.audio, bgm]))
+    # 🎵 使用新的 BGM 风格路由系统
+    if style_name:
+        st.write(f"🎵 根据 {style_name} 风格匹配 BGM...")
+        bgm_clip = get_bgm_by_style(style_name, final.duration)
+        if bgm_clip:
+            # 混合人声和 BGM
+            final = final.set_audio(CompositeAudioClip([
+                final.audio.volumex(1.2),  # 稍微调高人声，确保清晰
+                bgm_clip
+            ]))
+        else:
+            st.warning("⚠️ BGM 加载失败，使用原始音频")
+    else:
+        # 如果没有指定风格，尝试使用默认 BGM（兼容旧版本）
+        if os.path.exists("bgm.mp3"):
+            st.info("🎵 使用默认 BGM")
+            bgm = AudioFileClip("bgm.mp3").volumex(0.08).set_duration(final.duration)
+            final = final.set_audio(CompositeAudioClip([final.audio, bgm]))
 
     # 4. 导出 (优化参数防止云端内存溢出)
     final.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac", 

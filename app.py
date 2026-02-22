@@ -269,6 +269,9 @@ with tab_script:
             ],
             help="选择不同的爆款风格，AI将自动适配创作策略"
         )
+        
+        # 💡 保存风格到 session_state，供视频渲染时使用
+        st.session_state.script_mode = script_mode
                 
         # 💡 风格详细说明 + 视觉预览
         style_descriptions = {
@@ -430,13 +433,14 @@ with tab_script:
                         st.write("🎬 MoviePy 正在进行像素压制...")
                                 
                         video_file = "ai_b_roll_output.mp4"
-                        # 传递 voice_id 参数
+                        # 传递 voice_id 和 style_name 参数
                         success = render_ai_video_pipeline(
                             edited_scenes, 
                             zhipu_api_key, 
                             video_file, 
                             pexels_api_key,
-                            voice_id=st.session_state.voice_id  # 关键：传递音色 ID
+                            voice_id=st.session_state.voice_id,  # 关键：传递音色 ID
+                            style_name=st.session_state.get('script_mode')  # 🎵 关键：传递风格名称用于 BGM 匹配
                         )
                                 
                         if success:
